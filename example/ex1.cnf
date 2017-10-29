@@ -1,0 +1,6 @@
+c simple example
+p cnf 5 3
+c clausole start here
+ 1 -5 4 0
+ -1 5 3 4 0
+ -3 -4 0
