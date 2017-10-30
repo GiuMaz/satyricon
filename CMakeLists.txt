@@ -2,14 +2,18 @@ cmake_minimum_required (VERSION 3.1)
 
 project (satyricon VERSION 0.1 LANGUAGES CXX)
 
-set (CMAKE_CXX_STANDARD 11)
-include_directories(include)
-file(GLOB CPP_SRCS ${PROJECT_SOURCE_DIR}/src/*.cpp)
+add_library(satyricon
+    STATIC src/dimacs_parser.cpp)
 
-add_library(satyricon ${CPP_SRCS} )
+target_include_directories(satyricon
+    PUBLIC ${PROJECT_SOURCE_DIR}/include )
+target_compile_features(satyricon PRIVATE cxx_range_for)
 
 add_executable(solver solver/solver.cpp)
-add_executable(pigeon_hole pigeon_hole/pigeon.cpp)
+target_compile_features(solver PRIVATE cxx_range_for)
+target_link_libraries(solver
+    PRIVATE satyricon)
 
-target_link_libraries(solver satyricon)
+add_executable(pigeon_hole pigeon_hole/pigeon.cpp)
+target_compile_features(pigeon_hole PRIVATE cxx_range_for)
 
