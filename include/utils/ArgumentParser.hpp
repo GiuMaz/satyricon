@@ -5,7 +5,6 @@
  * A Small header only argument parsing class.
  * It support only a limited kind of argument.
  */
-
 #include <map>
 #include <utility>
 #include <string>
@@ -21,13 +20,17 @@ class ArgumentParser {
 public:
 
     ArgumentParser(const std::string& short_text, const std::string& long_text);
+
+    // TODO: write a real destructor
     ~ArgumentParser();
 
-    void add_positional( const std::string& name,
-            const std::string& description);
+    template<typename T>
+        void add_positional( const std::string& name,
+                const std::string& description);
 
-    void add_option( const std::string& name, char opt,
-            const std::string& description);
+    template<typename T>
+        void add_option( const std::string& name, char opt,
+                const std::string& description);
 
     void add_flag( const std::string& name, char opt,
             const std::string& description);
@@ -41,22 +44,53 @@ public:
 
     void parseCLI(int argc, char* argv[]);
 
-
 private:
 
-    struct Option   { char   opt; std::string name; std::string description; };
-    struct Position { size_t pos; std::string name; std::string description; };
     struct Flag     { char   opt; std::string name; std::string description; };
+
+    struct Position {
+        size_t pos;
+        std::string name;
+        std::string description;
+        virtual bool validate( std::string ) = 0;
+    };
+
+    struct Option {
+        char   opt;
+        std::string name;
+        std::string description;
+        virtual bool validate( std::string ) = 0;
+    };
+
+    template<typename T>
+        struct OptionT : Option  {
+            bool validate( std::string s ) {
+                T val;
+                std::istringstream iss(s);
+                iss >> val;
+                return !iss.fail();
+            };
+        };
+
+    template<typename T>
+        struct PositionT : Position  {
+            bool validate( std::string s ) {
+                T val;
+                std::istringstream iss(s);
+                iss >> val;
+                return !iss.fail();
+            };
+        };
 
     std::map<std::string,std::string> parsed;
 
     std::set<char> used_chars;
     std::map<char,std::string> char_flags;
-    std::map<char,std::string> char_options;
 
-    std::vector<Position> positionals;
+    std::vector<Position *> positionals;
     std::vector<Flag> flags;
-    std::vector<Option> options;
+
+    std::map<char,Option *> char_options;
 
     std::string short_text;
     std::string long_text;
@@ -69,25 +103,38 @@ ArgumentParser::ArgumentParser( const std::string& s, const std::string& l) :
 
 ArgumentParser::~ArgumentParser() {}
 
+template<typename T>
 void ArgumentParser::add_positional( const std::string& name,
         const std::string& description) {
-    positionals.push_back( { positionals.size()+1, name, description} );
+
+    auto t = new PositionT<T>();
+    t->pos = positionals.size() + 1;
+    t->name = name;
+    t->description = description;
+
+    positionals.push_back( t );
 }
 
+template<typename T>
 void ArgumentParser::add_option( const std::string& name, char opt,
         const std::string& description){
 
     assert( used_chars.find(opt) == used_chars.end() );
-    char_options.insert( make_pair (opt, name));
-    options.push_back( { opt, name, description } );
+
+    auto t = new OptionT<T>();
+    t->opt = opt;
+    t->name = name;
+    t->description = description;
+
+    char_options.insert( make_pair (opt, t));
 }
 
 void ArgumentParser::add_flag( const std::string& name, char opt,
         const std::string& description) {
 
     assert( used_chars.find(opt) == used_chars.end() );
+
     char_flags.insert( make_pair (opt, name));
-    flags.push_back( { opt, name, description } );
 }
 
 void ArgumentParser::parseCLI(int argc, char* argv[]) {
@@ -107,14 +154,20 @@ void ArgumentParser::parseCLI(int argc, char* argv[]) {
             if ( ++i == argc )
                 throw std::domain_error("invalid use of option");
 
-            parsed.insert ( std::make_pair( char_options[arg[1]], argv[i]) );
+            if ( ! char_options[arg[1]]->validate(std::string(argv[i])) )
+                throw std::domain_error("invalid type");
+
+            parsed.insert( std::make_pair( char_options[arg[1]]->name, argv[i]) );
             continue;
         } 
 
         if ( position > positionals.size() )
             throw std::domain_error("too many positional arguments");
 
-        parsed.insert( std::make_pair(positionals[position++].name, arg));
+        if ( ! positionals[position]->validate(std::string(argv[i])) )
+            throw std::domain_error("invalid type");
+
+        parsed.insert( std::make_pair(positionals[position++]->name, arg));
     }
 }
 
@@ -127,12 +180,22 @@ T ArgumentParser::get(const std::string& argument){
     std::istringstream iss( parsed[argument] );
     T ret;
     iss >> ret;
-    assert( !iss.fail() );
     return ret;
 }
 
 std::string ArgumentParser::get_message() const{
-    return short_text + "\n";
+
+    std::string message(short_text);
+    message += "\n";
+
+    for (auto i : char_options)
+    {
+        message+= "  -" + std::string(1,i.second->opt) + " <"  + i.second->name +
+            + ">\t" + i.second->description + "\n";
+    }
+
+    message+=long_text + "\n";
+    return message;
 }
 
 std::ostream & operator<<(std::ostream &os, ArgumentParser const &a) {

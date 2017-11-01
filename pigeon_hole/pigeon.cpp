@@ -15,12 +15,13 @@ using Utils::ArgumentParser;
 
 int main(int argc, char* argv[])
 {
+    // ARGUMENT PARSING
     const string N("N"), of("output_file"),help("help");
     ArgumentParser parser(
             "Generate pigeon hole problem with N hole and N+1 pigeon.",
             "long description");
-    parser.add_positional(N,"the number of holes in the problem");
-    parser.add_option(of,'o',"name of output file");
+    parser.add_positional<int>(N,"the number of holes in the problem");
+    parser.add_option<std::string>(of,'o',"name of output file");
     parser.add_flag(help,'h',"print this message and exit");
 
     try {
@@ -30,6 +31,7 @@ int main(int argc, char* argv[])
     {
         cout << e.what() << endl;
         cout << parser;
+        return 1;
     }
 
     if (parser.has(help)) {
