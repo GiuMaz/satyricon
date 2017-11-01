@@ -19,15 +19,21 @@ int main(int argc, char* argv[])
     const string N("N"), of("output_file"),help("help");
     ArgumentParser parser(
             "Generate pigeon hole problem with N hole and N+1 pigeon.",
-            "long description");
+            "This program generate instance of the notorius pigeon hole problem"
+            ". The problem generated are always not satisfiable.\n" 
+            "Generate file in dimacs cnf format. If the output file name is"
+            " not specified the file is named pigeon_<N>.cnf, with N equal"
+            " to the number of hole in the problem."
+            );
+
     parser.add_positional<int>(N,"the number of holes in the problem");
-    parser.add_option<std::string>(of,'o',"name of output file");
-    parser.add_flag(help,'h',"print this message and exit");
+    parser.add_option<std::string>(of,{"o"},"name of output file");
+    parser.add_flag(help,{"h","help"},"print this message and exit");
 
     try {
         parser.parseCLI(argc,argv);
     }
-    catch (exception &e)
+    catch (Utils::ParsingException &e)
     {
         cout << e.what() << endl;
         cout << parser;
@@ -36,7 +42,7 @@ int main(int argc, char* argv[])
 
     if (parser.has(help)) {
         cout << parser;
-        return 1;
+        return 0;
     }
 
     if ( !parser.has(N) ) {
