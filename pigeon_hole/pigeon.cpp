@@ -33,8 +33,7 @@ int main(int argc, char* argv[])
     try {
         parser.parseCLI(argc,argv);
     }
-    catch (Utils::ParsingException &e)
-    {
+    catch (Utils::ParsingException &e) {
         cout << e.what() << endl;
         cout << parser;
         return 1;
