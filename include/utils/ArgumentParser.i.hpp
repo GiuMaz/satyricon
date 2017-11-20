@@ -121,88 +121,74 @@ void ArgumentParser::add_flag( const std::string& name,
     }
 }
 
+bool is_short_arg( const std::string &s) {
+    return s.size() == 2 && s[0] == '-';
+}
+
+bool is_long_arg( const std::string &s) {
+    return s.size() > 2 && s[0] == '-' && s[1] == '-';
+}
+
+std::string strip_parsed_from_line( const std::string &s) {
+    if (s.size() == 2) return std::string(1,s[1]);
+    else               return std::string(s,2);
+}
 
 void ArgumentParser::parseCLI(int argc, char* argv[]) {
 
-    size_t position = 0;
-    program_name = std::string(argv[0]);
+    program_name = std::string(argv[0]); // name of the executable
+    std::vector<std::string> parsed_positional;
+    std::vector<std::string> parsed_flag;
+    std::vector<std::pair<std::string,std::string> > parsed_option;
 
+    // tokenize
     for ( int i = 1; i < argc; ++i)
     {
         std::string arg(argv[i]);
-        auto iter = arg.begin();
 
-        if ( *iter == '-' ) {
-            iter++;
+        if (is_short_arg(arg) || is_long_arg(arg)) {
 
-            if ( *iter == '-' ) { // parse a long name
-                std::string name( ++iter, arg.end());
+            std::string name = strip_parsed_from_line(arg);
 
-                if ( flag_mapping.find(name) != flag_mapping.end() )
-                    parsed.insert( make_pair(flag_mapping[name]->name,""));
+            if ( flag_mapping.find(name) != flag_mapping.end() )
+                parsed_flag.push_back(name);
 
-                else if ( option_mapping.find(name)  != option_mapping.end()) {
-
-                    if ( ++i == argc )
-                        throw ParsingException("invalid use of option");
-
-                    if ( ! option_mapping[name]->validate(std::string(argv[i])) )
-                        throw ParsingException("invalid type");
-
-                    parsed.insert( std::make_pair( option_mapping[name]->name, argv[i]) );
-                }
-                else
-                    throw ParsingException(name + " is not a valid flag or option");
-
-                continue;
-            }
-
-            // parse short name
-            std::string character( iter, iter+1);
-
-            if ( flag_mapping.find(character) != flag_mapping.end() )
-            {
-                parsed.insert( make_pair(flag_mapping[character]->name,""));
-                iter++;
-
-                for( ; iter != arg.end(); ++iter)
-                {
-                    std::string character( iter, iter+1);
-                    if ( flag_mapping.find(character) != flag_mapping.end() )
-                        parsed.insert( make_pair(flag_mapping[character]->name,""));
-                    else if ( option_mapping.find(character)  != option_mapping.end()) 
-                        throw ParsingException(arg + " is an invalid mix of flag and option");
-                    else
-                        throw ParsingException(character + " is not a valid flag or option");
-                }
-            }
-
-            else if ( option_mapping.find(character)  != option_mapping.end()) {
-
-                if ( iter+1 != arg.end() )
-                    throw ParsingException("invalid use of option");
+            else if ( option_mapping.find(name)  != option_mapping.end()) {
 
                 if ( ++i == argc )
                     throw ParsingException("invalid use of option");
 
-                if ( ! option_mapping[character]->validate(std::string(argv[i])) )
-                    throw ParsingException("invalid type");
-
-                parsed.insert( std::make_pair( option_mapping[character]->name, argv[i]) );
+                parsed_option.push_back(std::make_pair( name, argv[i] ));
             }
-            else
-                throw ParsingException(character + " is not a valid flag or option");
 
-            continue;
-        } 
+            else throw ParsingException(name + " is not a valid flag or option");
+        }
 
-        if ( position > positionals.size() )
-            throw ParsingException("too many positional arguments");
+        else parsed_positional.push_back(arg);
+    }
 
-        if ( ! positionals[position]->validate(std::string(argv[i])) )
+    // flags
+    for ( const auto & f : parsed_flag)
+        parsed.insert( std::make_pair(flag_mapping[f]->name,""));
+
+    // options
+    for ( const auto & o : parsed_option) {
+
+        if ( ! option_mapping[o.first]->validate(o.second) )
             throw ParsingException("invalid type");
 
-        parsed.insert( std::make_pair(positionals[position++]->name, arg));
+        parsed.insert(std::make_pair(option_mapping[o.first]->name, o.second));
+    }
+
+    // positional
+    if ( parsed_positional.size() > positionals.size() )
+        throw ParsingException("too many positional arguments");
+
+    for ( int j = 0; j < parsed_positional.size(); ++j) {
+        if ( ! positionals[j]->validate(parsed_positional[j]) )
+            throw ParsingException("invalid type");
+
+        parsed.insert(std::make_pair(positionals[j]->name, parsed_positional[j]));
     }
 }
 
@@ -214,7 +200,7 @@ template<typename T>
 T ArgumentParser::get(const std::string& argument) const {
     std::istringstream iss( parsed.at(argument) );
     T ret;
-    iss >> ret;
+    iss >> std::noskipws >> ret;
     return ret;
 }
 

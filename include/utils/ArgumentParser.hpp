@@ -2,7 +2,7 @@
 #define ARGUMENT_PARSER
 
 /**
- * A Small header only argument parsing class.
+ * A Small header only argument parsing library.
  * It support only a limited kind of argument.
  */
 #include <map>
@@ -25,15 +25,15 @@ public:
     ~ArgumentParser();
 
     template<typename T>
-        void add_positional( const std::string& name,
+        void add_positional(const std::string& name,
                 const std::string& description);
 
     template<typename T>
-        void add_option( const std::string& name,
+        void add_option(const std::string& name,
                 const std::vector<std::string>& opts,
                 const std::string& description);
 
-    void add_flag( const std::string& name,
+    void add_flag(const std::string& name,
             const std::vector<std::string>& flags,
             const std::string& description);
 

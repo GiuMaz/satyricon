@@ -16,20 +16,21 @@ using Utils::ArgumentParser;
 int main(int argc, char* argv[])
 {
     // ARGUMENT PARSING
+
+    // parsing set up
     const string N("N"), of("output_file"),help("help");
     ArgumentParser parser(
             "Generate pigeon hole problem with N hole and N+1 pigeon.",
             "This program generate instance of the notorius pigeon hole problem"
             ". The problem generated are always not satisfiable.\n" 
             "Generate file in dimacs cnf format. If the output file name is"
-            " not specified the file is named pigeon_<N>.cnf, with N equal"
-            " to the number of hole in the problem."
+            " not specified use directly the standard output"
             );
-
     parser.add_positional<int>(N,"the number of holes in the problem");
     parser.add_option<std::string>(of,{"o"},"name of output file");
     parser.add_flag(help,{"h","help"},"print this message and exit");
 
+    // parsing
     try {
         parser.parseCLI(argc,argv);
     }
@@ -44,7 +45,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if ( !parser.has(N) ) {
+    if ( ! parser.has(N) ) {
         cout << "Number of hole N is required\n" << parser;
         return 1;
     }
@@ -52,36 +53,33 @@ int main(int argc, char* argv[])
     int hole = parser.get<int>(N);
     int pigeon = hole + 1;
 
-    string out_file_name(parser.has(of) ?
-            parser.get<string>(of) : 
-            (string("pigeon_") + to_string(hole) + ".cnf"));
+    // if specified, change output file
+    if (parser.has(of)) freopen(parser.get<string>(of).c_str(),"w",stdout);
 
 // -----------------------------------------------------------------------------
 
     // PROBLEM GENERATION
-    ofstream ofs(out_file_name);
-
     // lambda function used for variable number generation
     auto variable = [hole](int p, int h) {  return (p-1) * hole + h; };
 
     // header
-    ofs << "c pigeon hole problem with "<< hole
+    cout << "c pigeon hole problem with "<< hole
         << " hole and " << pigeon << " pigeon\n";
-    ofs << "p cnf " <<  (hole * pigeon) << " " <<
+    cout << "p cnf " <<  (hole * pigeon) << " " <<
         ( pigeon + ((hole*hole*pigeon)/2)) <<"\n";
 
     // clausoles for have a hole for every pigeon
     for ( int p = 1; p <= pigeon; ++p) {
         for ( int h = 1; h <= hole; ++h)
-            ofs << variable(p,h) << " ";
-        ofs << "0\n";
+            cout << variable(p,h) << " ";
+        cout << "0\n";
     }
 
-    // clausoles for having a single pigeon for every hole
+    // clausoles for single pigeon in every hole
     for ( int j = 1; j <= hole; ++j)
         for ( int i = 1; i <= (pigeon-1); ++i)
             for ( int h = (i+1); h <= pigeon; ++h)
-                ofs << -variable(i,j) << " " << -variable(h,j) << " 0\n";
+                cout << -variable(i,j) << " " << -variable(h,j) << " 0\n";
         
     return EXIT_SUCCESS;
 }
