@@ -8,18 +8,14 @@
 
 using namespace std;
 
-set<vector<int> > DimacsParser::parse_file( const char * file_name)
+set<vector<int> > DimacsParser::parse_file( istream & is)
 {
-    int number_of_clausole, number_of_variable;
-    ifstream in(file_name, ifstream::in);
     set<vector<int> > clausole;
+    int number_of_clausole, number_of_variable;
     string line;
 
-    if ( ! in )
-        throw invalid_argument(string("unable to read file ") + file_name);
-
     // find first line
-    while (getline(in, line)) {
+    while (getline(is, line)) {
         if (line[0] == 'c') continue;
 
         std::istringstream iss(line);
@@ -34,8 +30,8 @@ set<vector<int> > DimacsParser::parse_file( const char * file_name)
     }
 
     // read clausole
-    while (getline(in, line)) {
-        if (line[0] == 'c') continue;
+    while (getline(is, line)) {
+        if ( line.size() == 0 || line[0] == 'c') continue;
 
         vector<int> c;
         std::istringstream iss(line);

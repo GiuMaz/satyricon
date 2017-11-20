@@ -10,7 +10,7 @@ class DimacsParser
     public:
         DimacsParser();
         ~DimacsParser();
-        static std::set<std::vector<int> > parse_file(const char * file_name);
+        static std::set<std::vector<int> > parse_file(std::istream &in);
 };
 
 #endif

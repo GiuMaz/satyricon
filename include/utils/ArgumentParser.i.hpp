@@ -161,7 +161,7 @@ void ArgumentParser::parseCLI(int argc, char* argv[]) {
                 parsed_option.push_back(std::make_pair( name, argv[i] ));
             }
 
-            else throw ParsingException(name + " is not a valid flag or option");
+            else throw ParsingException(name + " is not a flag or option");
         }
 
         else parsed_positional.push_back(arg);
