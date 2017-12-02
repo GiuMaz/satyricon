@@ -11,56 +11,57 @@
 #include "ArgumentParser.hpp"
 
 using namespace std;
-using Utils::ArgumentParser;
 
 int main(int argc, char* argv[])
 {
     // ARGUMENT PARSING
 
     // parsing set up
-    const string N("N"), of("output_file"),help("help");
-    ArgumentParser parser(
+    Utils::ArgumentParser parser(
             "Generate pigeon hole problem with N hole and N+1 pigeon.",
             "This program generate instance of the notorius pigeon hole problem"
             ". The problem generated are always not satisfiable.\n" 
             "Generate file in dimacs cnf format. If the output file name is"
             " not specified use directly the standard output"
             );
-    parser.add_positional<int>(N,"the number of holes in the problem");
-    parser.add_option<std::string>(of,{"o"},"name of output file");
-    parser.add_flag(help,{"h","help"},"print this message and exit");
+
+    auto& N = parser.make_positional<int>("N","the number of holes in the problem");
+    auto& of = parser.make_option<std::string>("output_file",
+            "name of output file",{"o","output-file"});
+    auto& help = parser.make_flag("help",
+            "print this message and exit",{"h","help"});
 
     // parsing
     try {
         parser.parseCLI(argc,argv);
     }
-    catch (Utils::ParsingException &e) {
+    catch ( Utils::ParsingException &e ) {
         cout << e.what() << endl;
         cout << parser;
         return 1;
     }
 
-    if (parser.has(help)) {
+    if ( help ) {
         cout << parser;
         return 0;
     }
 
-    if (!parser.has(N)) {
+    if ( !N ) {
         cout << "Number of hole N is required\n" << parser;
         return 1;
     }
 
-    int hole = parser.get<int>(N);
+    int hole = N.get_value();
     int pigeon = hole + 1;
 
     // if specified, change output file
-    if (parser.has(of)) freopen(parser.get<string>(of).c_str(),"w",stdout);
+    if ( of ) freopen(of.get_value().c_str(),"w",stdout);
 
 // -----------------------------------------------------------------------------
 
     // PROBLEM GENERATION
     // lambda function used for variable number generation
-    auto variable = [hole](int p, int h) {  return (p-1) * hole + h; };
+    auto variable = [hole](int p, int h) { return (p-1) * hole + h; };
 
     // comment
     cout << "c pigeon hole problem with "<< hole

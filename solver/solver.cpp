@@ -15,15 +15,14 @@ int main(int argc, char* argv[])
     // ARGUMENT PARSING
 
     // parsing set up
-    const string solution("solution"), help("help"), in("input");
     ArgumentParser parser(
             "SAT solver for propositional logic",
             " --- write long description --- "
             );
 
-    parser.add_positional<string>(in,"input file");
-    parser.add_flag(help,{"h","help"},"print this message and exit");
-    parser.add_flag(solution,{"s","solution"},"give proof");
+    auto& in       = parser.make_positional<string>("input","input file");
+    auto& help     = parser.make_flag("help","print this message and exit",{"h","help"});
+    auto& solution = parser.make_flag("solution","give proof",{"s","solution"});
 
     // parsing argument
     try {
@@ -35,15 +34,15 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    if (parser.has(help)) {
+    if ( help ) {
         cout << parser;
         return 0;
     }
 
-    bool print_solution = parser.has(solution);
+    bool print_solution = solution ? true : false;
 
     // redirect input file
-    if ( parser.has(in)) freopen(parser.get<string>(in).c_str(),"r",stdin);
+    if ( in ) freopen( in.get_value().c_str(), "r", stdin);
 
     // parsing file
     try {
