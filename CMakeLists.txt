@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.1)
 
 project (satyricon VERSION 0.2 LANGUAGES CXX)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_library(satyricon STATIC src/satyricon/dimacs_parser.cpp)
 
