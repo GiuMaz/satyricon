@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    bool print_solution = solution ? true : false;
+    //bool print_solution = solution ? true : false;
 
     // redirect input file
     if ( in ) freopen( in.get_value().c_str(), "r", stdin);

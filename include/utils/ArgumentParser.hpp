@@ -16,11 +16,35 @@
 #include <sstream>
 #include <vector>
 #include <set>
-#include <assert.h>
+#include "assert_message.hpp"
 
 namespace Utils {
 
+// Parsing exception
 using ParsingException = std::runtime_error;
+
+// utility function for text wrapping
+inline std::string wrap_string(const std::string &s,int begin, int end) {
+    assert_message(end > begin,"impossible to wrap text of negative size");
+
+    std::istringstream iss(s);
+    std::string wrapped, line;
+    std::string filler = std::string(begin,' ');
+
+    int limit = end - begin;
+    while( std::getline(iss,line) ) {
+
+        wrapped += filler;
+        size_t start = 0;
+        while ( (start+limit) < line.size() ) {
+            auto offset = line.find_last_of(' ', start + limit);
+            wrapped += std::string( line, start, offset-start ) + "\n" + filler;
+            start = offset+1;
+        }
+        wrapped += std::string(line, start, std::string::npos) + "\n";
+    }
+    return wrapped;
+}
 
 /**
  * The abstract class for flag, option and positional.
@@ -32,12 +56,21 @@ public:
     virtual ~ArgObject() {}
 
     bool is_parsed() { return parsed; }
-    bool set_parsed(bool b) { parsed = b; }
+    void set_parsed(bool b) { parsed = b; }
     explicit operator bool() { return is_parsed(); }
 
     const std::string& get_name() const { return name; }
     const std::string& get_description() const { return description; }
     virtual const std::string get_message() = 0;
+
+protected:
+    std::string argument_message(const std::string& opt, int start, int end) {
+        std::string message = wrap_string(get_description(),start,end);
+        if (opt.size() + 4 > start)
+            return "    " + opt + "\n" + message;
+        else
+            return message.replace(4, opt.size(), opt);
+    }
 
 private:
     std::string name;
@@ -52,9 +85,18 @@ class ArgFlag : public ArgObject {
 
 public:
     ArgFlag(const std::string& _name, const std::string& _description,
-            const std::vector<std::string>& _flags);
+            const std::vector<std::string>& _flags) :
+        ArgObject(_name,_description), flags(_flags) {}
+
     std::vector<std::string> flags;
-    const std::string get_message();
+    const std::string get_message() {
+        std::string opt;
+        for (auto o : flags) {
+            if (o.size() == 1) opt += "-"  + o + " ";
+            else               opt += "--" + o + " ";
+        }
+        return this->argument_message(opt,28,80);
+    }
 };
 
 /**
@@ -85,7 +127,7 @@ public:
     void parse_input(const std::string& in) {
         std::istringstream iss(in);
         iss >> value;
-        if (iss.fail()) throw ParsingException("invalid type for " + get_name());
+        if (iss.fail()) throw ParsingException("invalid type for "+get_name());
         set_parsed(true);
     }
 
@@ -108,34 +150,19 @@ template<typename T>
 class ArgPositional : public TypedArgObj<T> {
 
 public:
-    ArgPositional(const std::string& _name, const std::string& _description, size_t _pos) :
-        TypedArgObj<T>(_name,_description), pos(_pos) {}
+    ArgPositional(const std::string& _name, const std::string& _description,
+            size_t _pos) : TypedArgObj<T>(_name,_description), pos(_pos) {}
 
     size_t get_position() { return pos; };
     void set_position(size_t p ) { pos = p; };
-    const std::string get_message();
+
+    const std::string get_message() {
+        return this->argument_message("<" + this->get_name() + "> ",28,80);
+    }
 
 private:
     size_t pos;
 };
-
-template<typename T>
-const std::string ArgPositional<T>::get_message() {
-    std::string opt("    ");
-    opt += "<" + this->get_name() + "> ";
-    int gap;
-    if ( opt.size() >= 28 ) {
-        opt+="\n";
-        gap = 28;
-    }
-    else
-        gap = 28 - opt.size();
-
-    opt += std::string(gap,' ');
-    opt += this->get_description();
-    opt += "\n";
-    return opt;
-}
 
 /**
  * Option are identified by a dashed character or a double dashed word.
@@ -149,30 +176,18 @@ public:
             const std::vector<std::string>& _opts) :
         TypedArgObj<T>(_name,_description), opts(_opts) {}
     std::vector<std::string> opts;
-    const std::string get_message();
+
+    const std::string get_message() {
+        std::string opt;
+        for (auto o : opts) {
+            if (o.size() == 1) opt += "-"  + o + " ";
+            else               opt += "--" + o + " ";
+        }
+        opt += "<" + this->get_name() + "> ";
+        return this->argument_message(opt,28,80);
+    }
 };
 
-template<typename T>
-const std::string ArgOption<T>::get_message() {
-    std::string opt("    ");
-    for (auto o : opts) {
-        if (o.size() == 1) opt += "-"  + o + " ";
-        else               opt += "--" + o + " ";
-    }
-    opt += "<" + this->get_name() + "> ";
-    int gap;
-    if ( opt.size() >= 28 ) {
-        opt+="\n";
-        gap = 28;
-    }
-    else
-        gap = 28 - opt.size();
-
-    opt += std::string(gap,' ');
-    opt += this->get_description();
-    opt += "\n";
-    return opt;
-}
 
 /**
  * the parser. It is possible to add new element to the parser with the 
@@ -207,6 +222,8 @@ public:
 
 private:
     std::set<std::string> used_name;
+    std::set<std::string> used_identifier;
+
     std::vector<ValueArgObj *> positionals;
     std::vector<ValueArgObj *> options;
     std::vector<ArgFlag *> flags;
@@ -222,6 +239,10 @@ private:
 template<typename T>
 ArgPositional<T>&  ArgumentParser::make_positional( const std::string& name,
         const std::string& description) {
+    assert_message(used_name.find(name) == used_name.end(),
+            "name '" + name+"' already in use");
+    used_name.insert(name);
+
     auto p = new ArgPositional<T>(name,description,positionals.size());
     positionals.push_back(p);
     return *p;
@@ -230,39 +251,23 @@ ArgPositional<T>&  ArgumentParser::make_positional( const std::string& name,
 template<typename T>
 ArgOption<T>& ArgumentParser::make_option( const std::string& name,
         const std::string& description, const std::vector<std::string>& opts) {
+    assert_message(used_name.find(name) == used_name.end(),
+            "name '" + name+"' already in use");
+    used_name.insert(name);
+
     auto o = new ArgOption<T>(name,description,opts);
     options.push_back(o);
 
     for ( auto i : opts ) {
+        assert_message(used_identifier.find(i) == used_identifier.end(),
+                "identifier '"+i+"' already in use");
+        used_identifier.insert(i);
+
         option_mapping.insert( make_pair (i, o));
-        used_name.insert(i);
     }
 
     return *o;
 }
-
-inline std::string wrap_string(const std::string &s, int limit) {
-
-    std::istringstream iss(s);
-    std::string wrapped, line;
-
-    while( std::getline(iss,line) ) {
-
-        size_t start = 0;
-        while ( (start+limit) < line.size() ) {
-            auto offset = line.find_last_of(' ', start + limit);
-            wrapped += std::string( line, start, offset-start ) + "\n";
-            start = offset+1;
-        }
-        wrapped += std::string(line, start, std::string::npos) + "\n";
-    }
-
-    return wrapped;
-}
-
-inline ArgFlag::ArgFlag(const std::string& _name, const std::string& _description,
-        const std::vector<std::string>& _flags) :
-    ArgObject(_name,_description), flags(_flags) {}
 
 inline ArgumentParser::~ArgumentParser() {
     for ( auto i : positionals ) delete i;
@@ -275,13 +280,19 @@ inline ArgumentParser::~ArgumentParser() {
 
 inline ArgFlag& ArgumentParser::make_flag( const std::string& name,
         const std::string& description, const std::vector<std::string>& flg) {
+    assert_message(used_name.find(name) == used_name.end(),
+            "name '" + name+"' already in use");
+    used_name.insert(name);
 
     auto f = new ArgFlag(name,description,flg);
     flags.push_back(f);
 
     for ( auto i : flg ) {
+        assert_message(used_identifier.find(i) == used_identifier.end(),
+                "identifier '"+i+"' already in use");
+        used_identifier.insert(i);
+
         flag_mapping.insert( std::make_pair(i, f));
-        used_name.insert(i);
     }
 
     return *f;
@@ -328,36 +339,13 @@ inline void ArgumentParser::parseCLI(int argc, char* argv[]) {
     }
 }
 
-inline const std::string ArgFlag::get_message() {
-
-    std::string opt("    ");
-
-    for (auto o : flags) {
-        if (o.size() == 1) opt += "-"  + o + " ";
-        else               opt += "--" + o + " ";
-    }
-
-    int gap;
-    if ( opt.size() >= 28 ) {
-        opt+="\n";
-        gap = 28;
-    }
-    else
-        gap = 28 - opt.size();
-
-    opt += std::string(gap,' ');
-    opt += get_description();
-    opt += "\n";
-    return opt;
-}
-
 inline std::string ArgumentParser::get_message() const {
 
     std::string message("Usage: "+program_name);
     if  ( !options.empty() || !flags.empty() ) message+=" {OPTIONS}";
     for (auto i : positionals)                 message+=" ["+i->get_name()+"]";
 
-    message += "\n" + wrap_string(short_text,80);
+    message += "\n" + wrap_string(short_text,0,80);
     message += "\nOptions:\n";
 
     for (auto i : positionals) { message += i->get_message(); }
@@ -365,11 +353,14 @@ inline std::string ArgumentParser::get_message() const {
     for (auto i : flags)       { message += i->get_message(); }
 
     message+= "\n";
-    message += wrap_string(long_text,80);
+    message += wrap_string(long_text,0,80);
     return message;
 }
 
-inline std::ostream & operator<<(std::ostream &os, Utils::ArgumentParser const &a) {
+/**
+ * ostream overload for printing of message
+ */
+inline std::ostream & operator<<(std::ostream &os, ArgumentParser const &a) {
     return os << a.get_message();
 }
 

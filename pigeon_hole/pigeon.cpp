@@ -25,9 +25,10 @@ int main(int argc, char* argv[])
             " not specified use directly the standard output"
             );
 
-    auto& N = parser.make_positional<int>("N","the number of holes in the problem");
+    auto& N = parser.make_positional<int>("N",
+            "the number of holes in the problem");
     auto& of = parser.make_option<std::string>("output_file",
-            "name of output file",{"o","output-file"});
+            "name of output file",{"o"});
     auto& help = parser.make_flag("help",
             "print this message and exit",{"h","help"});
 
