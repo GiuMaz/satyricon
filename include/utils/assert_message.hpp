@@ -13,13 +13,12 @@ namespace Utils {
 /**
  * assertion with error message, only in debug mode
  */
-inline void __M_Assert(const char* expr_str, bool expr, const char* file, int line, std::string msg)
-{
-    if (!expr)
-    {
-        std::cerr << "Assert failed:\t" << msg << std::endl
-            << "Expected:\t" << expr_str << std::endl
-            << "Source:\t\t" << file << ", line " << line << std::endl;
+inline void __M_Assert(const char* expr_str, bool expr,
+        const char* file, int line, std::string msg) {
+    if (!expr) {
+        std::cerr << "Failed:   " << msg << std::endl
+                  << "Expected: " << expr_str << std::endl
+                  << "Source:   " << file << ", line " << line << std::endl;
         abort();
     }
 }
