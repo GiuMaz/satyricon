@@ -260,7 +260,7 @@ ArgOption<T>& ArgumentParser::make_option( const std::string& name,
 
     for ( auto i : opts ) {
         assert_message(used_identifier.find(i) == used_identifier.end(),
-                "identifier '"+i+"' already in use");
+                "identifier '"+i+"' in '"+name+"' already used.");
         used_identifier.insert(i);
 
         option_mapping.insert( make_pair (i, o));
@@ -289,7 +289,7 @@ inline ArgFlag& ArgumentParser::make_flag( const std::string& name,
 
     for ( auto i : flg ) {
         assert_message(used_identifier.find(i) == used_identifier.end(),
-                "identifier '"+i+"' already in use");
+                "identifier '"+i+"' in '"+name+"' already used.");
         used_identifier.insert(i);
 
         flag_mapping.insert( std::make_pair(i, f));
@@ -325,13 +325,23 @@ inline void ArgumentParser::parseCLI(int argc, char* argv[]) {
 
         std::string name = strip_line_from_beginning(arg);
 
-        if ( flag_mapping.find(name) != flag_mapping.end() )
-            flag_mapping[name]->set_parsed(true);
+        if ( flag_mapping.find(name) != flag_mapping.end() ) {
 
+            if (flag_mapping[name]->is_parsed())
+                throw ParsingException("multiple specification of flag " +
+                        flag_mapping[name]->get_name());
+
+            flag_mapping[name]->set_parsed(true);
+        }
         else if ( option_mapping.find(name)  != option_mapping.end()) {
 
             if ( ++i == argc )
                 throw ParsingException("invalid use of option");
+
+            if (option_mapping[name]->is_parsed())
+                throw ParsingException("multiple specification of option " +
+                        option_mapping[name]->get_name());
+
             option_mapping[name]->parse_input(std::string(argv[i]));
 
         }

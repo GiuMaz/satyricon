@@ -3,14 +3,18 @@
 
 #include <string>
 #include <vector>
-#include <set>
+#include "data_structure.hpp"
+
+namespace Satyricon {
 
 class DimacsParser
 {
     public:
         DimacsParser();
         ~DimacsParser();
-        static std::set<std::vector<int> > parse_file(std::istream &in);
+        static Formula parse_file(std::istream &in);
 };
+
+} // end namespace Satyricon
 
 #endif

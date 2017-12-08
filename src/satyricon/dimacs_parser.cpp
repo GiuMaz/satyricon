@@ -1,20 +1,21 @@
 #include "dimacs_parser.hpp"
+#include "data_structure.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <exception>
-#include <set>
 
 using namespace std;
+using namespace Satyricon;
 
-set<vector<int> > DimacsParser::parse_file( istream & is)
+Formula DimacsParser::parse_file( istream & is)
 {
-    set<vector<int> > clausole;
+    Satyricon::Formula f;
     int number_of_clausole, number_of_variable;
     string line;
 
-    // find first line
+    // find header line
     while (getline(is, line)) {
         if (line[0] == 'c') continue;
 
@@ -28,8 +29,10 @@ set<vector<int> > DimacsParser::parse_file( istream & is)
                     " as first line");
         break;
     }
+    f.number_of_clausole = number_of_clausole;
+    f.number_of_variable = number_of_variable;
 
-    // read clausole
+    // read clausoles
     while (getline(is, line)) {
         if ( line.size() == 0 || line[0] == 'c') continue;
 
@@ -49,11 +52,11 @@ set<vector<int> > DimacsParser::parse_file( istream & is)
 
             c.push_back(value);
         }
-        clausole.insert(c);
+        f.clausoles.push_back(c);
     }
 
-    if (clausole.size() != number_of_clausole)
-        throw domain_error("wrong number of clausole");
+    if (f.clausoles.size() != number_of_clausole)
+        throw domain_error("wrong number of clausoles");
 
-    return clausole;
+    return f;
 }

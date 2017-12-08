@@ -5,6 +5,8 @@
 #include <exception>
 #include <cstdlib>
 #include "dimacs_parser.hpp"
+#include "data_structure.hpp"
+#include "sat_solver.hpp"
 #include "ArgumentParser.hpp"
 
 using namespace std;
@@ -20,9 +22,11 @@ int main(int argc, char* argv[])
             " --- write long description --- "
             );
 
-    auto& in       = parser.make_positional<string>("input","input file");
-    auto& help     = parser.make_flag("help","print this message and exit",{"h","help"});
-    auto& solution = parser.make_flag("solution","give proof",{"s","solution"});
+    auto& in = parser.make_positional<string>("input","input file");
+    auto& help = parser.make_flag("help",
+            "print this message and exit",{"h","help"});
+    auto& print_proof = parser.make_flag("print_proof",
+            "print proof",{"p","proof"});
 
     // parsing argument
     try {
@@ -39,23 +43,32 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    //bool print_solution = solution ? true : false;
-
     // redirect input file
     if ( in ) freopen( in.get_value().c_str(), "r", stdin);
 
+// -----------------------------------------------------------------------------
+
+    // SOLVER
+
+    Satyricon::Formula formula;
     // parsing file
     try {
-        auto s = DimacsParser::parse_file(cin);
-
-        for (auto i : s ) {
-            for (auto j : i) cout << j << " ";
-            cout << endl;
-        }
+        formula = Satyricon::DimacsParser::parse_file(cin);
     }
     catch (const exception& e) {
         cout << "ERROR: " << e.what() << endl;
     }
 
-    return EXIT_SUCCESS;
+    Satyricon::SATSolver solver;
+
+    // set option in solver
+    // ...
+
+    auto result = solver.solve(formula);
+
+    cout << (result.is_sat() ? "soddisfacibile" : "insoddisfacibile") << endl;
+    if ( print_proof ) cout << result.get_solution();
+
+    return 0;
 }
+
