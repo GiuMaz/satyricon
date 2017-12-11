@@ -2,6 +2,8 @@
 #define SATYRICON_DATA_STRUCTURE_HPP
 
 #include <vector>
+#include <array>
+#include <queue>
 
 namespace Satyricon {
 
@@ -31,33 +33,52 @@ static_assert ( (LIT_ONE - LIT_UNASIGNED) == LIT_UNASIGNED,
 static_assert ( (LIT_ONE - LIT_ONE) == LIT_ZERO,
         "must be LIT_ONE - LIT_ONE = LIT_ZERO");
 
-/*
- * literal asignement
- */
-using Assignment = std::vector<literal_value>;
-
 /**
  * literal object.
  * 0 is not a litteral, a literal l < 0 is a negated literal
  */
-using Literal = int;
+class Literal {
+public:
+    Literal(unsigned int _atom, bool _is_negated) : atom_val(_atom), negated(_is_negated) {}
+    bool is_negated() const { return negated; }
+    unsigned int atom() const { return atom_val; }
 
-/* real class
-struct Clausole {
-    std::vector<Literal> literals;
+    Literal& operator=(const Literal& other) {
+        atom_val = other.atom_val;
+        negated = other.negated;
+    }
+
+
+private:
+    unsigned int atom_val;
+    bool negated;
+};
+
+inline bool operator==(const Literal& lhs, const Literal& rhs) {
+    return lhs.atom() == rhs.atom() && lhs.is_negated() == rhs.is_negated();
 }
+
+inline bool operator!=(const Literal& lhs, const Literal& rhs) {
+    return !(lhs == rhs);
+}
+
+/* Clause class
 */
-using Clausole = std::vector<Literal>;
+struct Clause {
+    std::vector<Literal> literals;
+    std::vector<Literal>::size_type watch[2];
+};
+//using Clause = std::vector<Literal>;
 
 /**
  * Formula
  */
-struct Formula {
-    std::vector<Clausole> clausoles;
+class Formula {
+public:
+    std::vector<Clause> clausoles;
     int number_of_clausole;
     int number_of_variable;
 };
 
 } // end namespace Satyricon
-
 #endif

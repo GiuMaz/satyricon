@@ -8,7 +8,7 @@ namespace Utils {
 
 #ifndef NDEBUG
 #   define assert_message(Expr, Msg) \
-    __M_Assert(#Expr, Expr, __FILE__, __LINE__, Msg)
+    Utils::__M_Assert(#Expr, Expr, __FILE__, __LINE__, Msg)
 
 /**
  * assertion with error message, only in debug mode

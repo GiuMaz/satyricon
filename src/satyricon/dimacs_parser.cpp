@@ -36,7 +36,7 @@ Formula DimacsParser::parse_file( istream & is)
     while (getline(is, line)) {
         if ( line.size() == 0 || line[0] == 'c') continue;
 
-        vector<int> c;
+        Clause c;
         std::istringstream iss(line);
         int value;
 
@@ -50,7 +50,7 @@ Formula DimacsParser::parse_file( istream & is)
                 throw domain_error(string("invalid variable ")
                         + to_string(value));
 
-            c.push_back(value);
+            c.literals.push_back( Literal(abs(value-1), value < 0) );
         }
         f.clausoles.push_back(c);
     }

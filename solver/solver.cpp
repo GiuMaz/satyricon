@@ -57,14 +57,15 @@ int main(int argc, char* argv[])
     }
     catch (const exception& e) {
         cout << "ERROR: " << e.what() << endl;
+        return 1;
     }
 
-    Satyricon::SATSolver solver;
+    Satyricon::SATSolver solver(formula);
 
     // set option in solver
     // ...
 
-    auto result = solver.solve(formula);
+    auto result = solver.solve();
 
     cout << (result.is_sat() ? "soddisfacibile" : "insoddisfacibile") << endl;
     if ( print_proof ) cout << result.get_solution();
