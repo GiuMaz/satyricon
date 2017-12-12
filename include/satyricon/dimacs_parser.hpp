@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "data_structure.hpp"
+#include "sat_solver.hpp"
 
 namespace Satyricon {
 
@@ -12,7 +13,7 @@ class DimacsParser
     public:
         DimacsParser();
         ~DimacsParser();
-        static Formula parse_file(std::istream &in);
+        static void parse_file(std::istream &in);
 };
 
 } // end namespace Satyricon

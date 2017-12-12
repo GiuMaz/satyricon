@@ -1,5 +1,6 @@
 #include "dimacs_parser.hpp"
 #include "data_structure.hpp"
+#include "sat_solver.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -9,9 +10,9 @@
 using namespace std;
 using namespace Satyricon;
 
-Formula DimacsParser::parse_file( istream & is)
+void DimacsParser::parse_file( istream & is)
 {
-    Satyricon::Formula f;
+    /*
     int number_of_clausole, number_of_variable;
     string line;
 
@@ -57,6 +58,7 @@ Formula DimacsParser::parse_file( istream & is)
 
     if (f.clausoles.size() != number_of_clausole)
         throw domain_error("wrong number of clausoles");
-
     return f;
+        */
+
 }

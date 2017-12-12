@@ -50,17 +50,17 @@ int main(int argc, char* argv[])
 
     // SOLVER
 
-    Satyricon::Formula formula;
+    //Satyricon::Formula formula;
     // parsing file
     try {
-        formula = Satyricon::DimacsParser::parse_file(cin);
+        Satyricon::DimacsParser::parse_file(cin);
     }
     catch (const exception& e) {
         cout << "ERROR: " << e.what() << endl;
         return 1;
     }
 
-    Satyricon::SATSolver solver(formula);
+    Satyricon::SATSolver solver;
 
     // set option in solver
     // ...

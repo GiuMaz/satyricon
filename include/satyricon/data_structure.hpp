@@ -48,7 +48,6 @@ public:
         negated = other.negated;
     }
 
-
 private:
     unsigned int atom_val;
     bool negated;
@@ -62,23 +61,9 @@ inline bool operator!=(const Literal& lhs, const Literal& rhs) {
     return !(lhs == rhs);
 }
 
-/* Clause class
-*/
-struct Clause {
-    std::vector<Literal> literals;
-    std::vector<Literal>::size_type watch[2];
-};
-//using Clause = std::vector<Literal>;
+enum clause_status_val {
+    CLAUSE_SAT, CLAUSE_UNSAT, CLAUSE_UNIT, CLAUSE_UNRESOLVED };
 
-/**
- * Formula
- */
-class Formula {
-public:
-    std::vector<Clause> clausoles;
-    int number_of_clausole;
-    int number_of_variable;
-};
 
 } // end namespace Satyricon
 #endif

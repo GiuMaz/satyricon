@@ -7,8 +7,8 @@
 using namespace std;
 using namespace Satyricon;
 
-SATSolver::SATSolver(Formula& f):
-    formula(f),
+SATSolver::SATSolver()
+    /*
     values(f.number_of_variable+1, LIT_UNASIGNED),
     decision_levels(f.number_of_variable+1,-1),
     antecedents(f.number_of_variable+1,-1),
@@ -17,16 +17,20 @@ SATSolver::SATSolver(Formula& f):
     number_of_assigned_variable(0),
     vsids_positive(f.number_of_variable+1,0),
     vsids_negative(f.number_of_variable+1,0)
+    */
 {
     // initialize watch_list
-    for (size_t i = 0; i < f.clausoles.size(); ++i) {
-        for (const auto & l : f.clausoles[i].literals ) {
+    /*
+    for (size_t i = 0; i < clauses.size(); ++i) {
+        for (const auto & l : clauses[i].literals ) {
             watch_list[!l.is_negated()][l.atom()].push_back(i);
         }
     }
+    */
 
     // initialize watcher, find the unit
-    for ( auto c : f.clausoles ) {
+    /*
+    for ( auto c : clauses ) {
 
         c.watch[0] = 0;
         c.watch[1] = c.literals.size() - 1;
@@ -34,14 +38,17 @@ SATSolver::SATSolver(Formula& f):
         // if the first literal is equal to the last one, it must be a unit
         if (c.watch[0] == c.watch[1]) unit_queue.push(c.literals[0]);
     }
+    */
 
     // initialize VSIDS
-    for (const auto& clause : formula.clausoles) {
+    /*
+    for (const auto& clause : clauses) {
         for (const auto& lit : clause.literals) {
             if ( ! lit.is_negated() ) ++vsids_positive[ lit.atom() ];
             else ++vsids_negative[ lit.atom() ];
         }
     }
+    */
 }
 
 literal_value SATSolver::get_asigned_value(const Literal & l) {
@@ -75,14 +82,15 @@ bool SATSolver::assign_infered(Literal l, int level,int antecedent) {
     ++number_of_assigned_variable;
     values[l.atom()] = l.is_negated() ? LIT_ZERO : LIT_ONE;
     decision_levels[l.atom()] = level;
-    antecedents[l.atom()] = antecedent;  // TODO: riguardare definizione corretta di antecedente
+    antecedents[l.atom()] = antecedent; // TODO: riguardare definizione corretta di antecedente
 
     // update watched literals
 
     auto i  = watch_list[l.is_negated()][l.atom()].begin();
+    /*
     while ( i !=watch_list[l.is_negated()][l.atom()].end() ) {
 
-        auto& c = formula.clausoles[*i];
+        auto& c = clauses[*i];
 
         // if one watched literal is true, no change are required
         if ( get_asigned_value(c.literals[c.watch[0]]) == LIT_ONE ||
@@ -119,8 +127,14 @@ bool SATSolver::assign_infered(Literal l, int level,int antecedent) {
             }
         }
     }
+    */
 
     return false;
+}
+
+void SATSolver::add_clause( std::vector<Literal> c ) {
+    // TODO: probably more check are required
+    clauses.push_back(Clause(*this, c));
 }
 
 Literal SATSolver::decide_new_literal() {
@@ -161,7 +175,7 @@ Solution SATSolver::solve() {
         return Solution(false,"");
 
     /*
-    while ( number_of_assigned_variable < formula.number_of_variable ) {
+    while ( number_of_assigned_variable < number_of_variable ) {
 
         // chose the new assignment (using some euristic)
         auto new_lit = decide_new_literal();
@@ -183,7 +197,7 @@ Solution SATSolver::solve() {
     if( unit_propagation(decision_level) == true)
         return Solution(false,"");
 
-    while ( number_of_assigned_variable < formula.number_of_variable ) {
+    while ( number_of_assigned_variable < number_of_variable ) {
 
         ++decision_level; // increase decision level
 
