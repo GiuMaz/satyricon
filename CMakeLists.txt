@@ -11,7 +11,7 @@ target_include_directories(utils INTERFACE include/utils )
 add_library(satyricon STATIC
     src/satyricon/dimacs_parser.cpp
     src/satyricon/sat_solver.cpp
-    src/satyricon/data_structure.cpp
+    src/satyricon/vsids.cpp
     src/satyricon/literal.cpp)
 
 target_include_directories(satyricon PUBLIC include/satyricon )

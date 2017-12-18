@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <chrono>
 #include "dimacs_parser.hpp"
-#include "data_structure.hpp"
 #include "sat_solver.hpp"
 #include "ArgumentParser.hpp"
 #include "log.hpp"

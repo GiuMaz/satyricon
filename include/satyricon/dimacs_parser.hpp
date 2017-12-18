@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include "data_structure.hpp"
 #include "sat_solver.hpp"
 
 namespace Satyricon {

@@ -3,22 +3,23 @@
 
 #include <vector>
 #include <set>
-#include <array>
-#include <queue>
-#include <memory>
-#include <limits>
-#include "assert_message.hpp"
+#include <iostream>
 
 namespace Satyricon {
 
+/**
+ * Possible value assigned to a literal
+ */
 enum literal_value {
-    LIT_ZERO,
+    LIT_FALSE,
     LIT_UNASIGNED,
-    LIT_ONE
+    LIT_TRUE
 };
 
 /**
- * Literal object.
+ * Literal class.
+ * Contain the basic information required to rappresent a literal and
+ * some other helpfull method
  */
 class Literal {
 public:

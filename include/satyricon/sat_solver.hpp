@@ -1,7 +1,7 @@
 #ifndef SATYRICON_SOLVER_HPP
 #define SATYRICON_SOLVER_HPP
 
-#include "data_structure.hpp"
+#include "vsids.hpp"
 #include <string>
 #include <queue>
 #include <list>

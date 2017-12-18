@@ -1,5 +1,4 @@
 #include "dimacs_parser.hpp"
-#include "data_structure.hpp"
 #include "sat_solver.hpp"
 #include "literal.hpp"
 #include <fstream>

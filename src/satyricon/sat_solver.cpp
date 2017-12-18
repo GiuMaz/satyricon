@@ -1,5 +1,5 @@
 #include "sat_solver.hpp"
-#include "data_structure.hpp"
+#include "vsids.hpp"
 #include "assert_message.hpp"
 #include <array>
 #include <queue>
@@ -79,7 +79,7 @@ void SATSolver::build_model() {
     for ( const auto& v : values) {
         assert_message(v != LIT_UNASIGNED,
                 "Building a model with unsasigned literal");
-        model.push_back( v == LIT_ONE ? val : -val );
+        model.push_back( v == LIT_TRUE ? val : -val );
         ++val;
     }
 }
@@ -103,10 +103,10 @@ void SATSolver::set_log( Utils::Log l) {
 
 literal_value SATSolver::get_asigned_value(const Literal & l) {
     switch (values[l.atom()]) {
-        case LIT_ONE:
-            return l.is_negated() ? LIT_ZERO : LIT_ONE;
-        case LIT_ZERO:
-            return l.is_negated() ? LIT_ONE  : LIT_ZERO;
+        case LIT_TRUE:
+            return l.is_negated() ? LIT_FALSE : LIT_TRUE;
+        case LIT_FALSE:
+            return l.is_negated() ? LIT_TRUE  : LIT_FALSE;
         default:
             return LIT_UNASIGNED;
     }
@@ -114,16 +114,16 @@ literal_value SATSolver::get_asigned_value(const Literal & l) {
 
 bool SATSolver::assign(Literal l, shared_ptr<SATSolver::Clause> antecedent) {
 
-    if ( get_asigned_value(l) == LIT_ONE )
+    if ( get_asigned_value(l) == LIT_TRUE )
         return false; // already assigned, no conflict
-    if ( get_asigned_value(l) == LIT_ZERO )
+    if ( get_asigned_value(l) == LIT_FALSE )
         return true; // conflict!
 
     ++number_of_assigned_variable;
     log.verbose << "\tassign literal " << l <<
         " with level " << current_level <<
         " and antecedent " << (antecedent == nullptr ? "NONE" :  antecedent->print() ) << endl;
-    values[l.atom()] = l.is_negated() ? LIT_ZERO : LIT_ONE;
+    values[l.atom()] = l.is_negated() ? LIT_FALSE : LIT_TRUE;
     decision_levels[l.atom()] = current_level;
     antecedents[l.atom()] = antecedent;
 
@@ -371,10 +371,10 @@ void SATSolver::Clause::initialize_structure() {
 
 bool SATSolver::Clause::propagate(Literal l) {
     // move the wrong literal in 0
-    if (solver.get_asigned_value(watch[1]) == LIT_ZERO)
+    if (solver.get_asigned_value(watch[1]) == LIT_FALSE)
         std::swap(watch[0],watch[1]);
 
-    if (solver.get_asigned_value(watch[1]) == LIT_ONE) {
+    if (solver.get_asigned_value(watch[1]) == LIT_TRUE) {
         // reinsert inside the previous watch list
         solver.watch_list[l].push_back(shared_from_this());
         return false; // no conflict
@@ -382,7 +382,7 @@ bool SATSolver::Clause::propagate(Literal l) {
 
     // search a new literal to watch
     for ( auto u : literals ) {
-        if (solver.get_asigned_value(u) != LIT_ZERO && u != watch[1]) {
+        if (solver.get_asigned_value(u) != LIT_FALSE && u != watch[1]) {
             // foundt a valid literal, move the watch_list
             watch[0] = u;
             solver.watch_list[u].push_back(shared_from_this());
@@ -484,7 +484,6 @@ void SATSolver::Clause::remove() {
             }
     }
 }
-
 
 std::string SATSolver::Clause::print() const {
     if ( literals.empty() ) return "□";
