@@ -89,11 +89,11 @@ int main(int argc, char* argv[])
     chrono::duration<double> elapsed = end_time - start;
     log.normal << "completed in: " << fixed << setprecision(2) << elapsed.count() << "s\n";
 
-    log.normal << (satisfiable ? "SODDISFACIBILE" : "INSODDISFACIBILE") << endl;
+    log.normal << (satisfiable ? "SATISFIABLE" : "UNSATISFIABLE") << endl;
     if ( print_proof && satisfiable == true )
-        cout << "Model: " << solver.string_model() << endl;
+        cout << "Model: " << endl << solver.string_model() << endl;
     if ( print_proof && satisfiable == false )
-        cout << "Couter proof: " << solver.string_conterproof() << endl;
+        cout << "Counterproof: " << endl << solver.string_conterproof() << endl;
 
     return 0;
 }

@@ -28,6 +28,8 @@ SATSolver::SATSolver():
     current_level(0),
     log(Utils::LOG_NONE),
     model(),
+    first_counterp(),
+    second_counterp(),
     subsumption()
 {}
 
@@ -46,7 +48,7 @@ bool SATSolver::solve() {
 
             if ( current_level == 0 ) {
                 log.verbose << "conflict at level 0, build counterproof\n";
-                //build_conterproof();
+                build_conterproof();
                 return false; // unsolvable conflict
             }
 
@@ -207,9 +209,15 @@ void SATSolver::build_conterproof() {
                 new_lit.push_back(l);
             }
             log.verbose << " -> "  << new_lit << endl;
-            auto new_ptr = make_shared<Clause>(*this,new_lit, true, conflict_clause, antecedents[it->atom()]);
-            conflict_clause = new_ptr;
-            if ( conflict_clause->get_literals().empty() ) break;
+            if ( new_lit.empty() ) { // foundt the empty clause
+                first_counterp = conflict_clause;
+                second_counterp = antecedents[it->atom()];
+                break;
+            }
+            else {
+                auto new_ptr = make_shared<Clause>(*this,new_lit, true, conflict_clause, antecedents[it->atom()]);
+                conflict_clause = new_ptr;
+            }
         }
     }
 }
@@ -439,7 +447,12 @@ void SATSolver::preprocessing() {
 
 string SATSolver::string_conterproof() {
     ostringstream oss;
-    conflict_clause->print_justification(oss,0);
+    oss << "clause □ (empty) from resolution of " << first_counterp->print() << " and " <<
+        second_counterp->print() << endl;
+    oss << "┣╸";
+    first_counterp->print_justification(oss, "┃ ");
+    oss << "┗╸";
+    second_counterp->print_justification(oss,"  ");
     return oss.str();
 }
 

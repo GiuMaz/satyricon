@@ -89,6 +89,8 @@ private:
     Utils::Log log;
 
     std::vector<int> model;
+    std::shared_ptr<Clause> first_counterp;
+    std::shared_ptr<Clause> second_counterp;
 
     SubsumptionMap subsumption;
 
@@ -174,13 +176,17 @@ public:
 
     uint64_t get_signature() const { return signature; }
 
-    void print_justification(std::ostream& os, size_t indent_level) {
-        os << std::string(indent_level, ' ') << print();
+    void print_justification(std::ostream& os, const std::string& prefix = "") {
+        os << "clause " << print();
         if ( learned ) {
-            os << " learned from " << learned_from[0] <<
-                " and " << learned_from[1] << std::endl;
-            learned_from[0]->print_justification(os, indent_level+1);
-            learned_from[1]->print_justification(os, indent_level+1);
+            os << " from resolution of " << learned_from[0]->print() <<
+                " and " << learned_from[1]->print() << std::endl;
+            assert_message( learned_from[0] != nullptr && learned_from[1] != nullptr,
+                    "learned is nullptr, must be another clause for learned");
+            os << (prefix+"┣╸");
+            learned_from[0]->print_justification(os,prefix+"┃ ");
+            os << (prefix+"┗╸");
+            learned_from[1]->print_justification(os,prefix+"  " );
         }
         else
             os << " from the original formula" << std::endl;
