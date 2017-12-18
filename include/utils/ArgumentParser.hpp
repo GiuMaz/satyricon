@@ -64,7 +64,7 @@ public:
     virtual const std::string get_message() = 0;
 
 protected:
-    std::string argument_message(const std::string& opt, int start, int end) {
+    std::string argument_message(const std::string& opt, size_t start, size_t end) {
         std::string message = wrap_string(get_description(),start,end);
         if (opt.size() + 4 > start)
             return "    " + opt + "\n" + message;

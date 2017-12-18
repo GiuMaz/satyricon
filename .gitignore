@@ -1,3 +1,4 @@
 build/*
+release/*
 example/*
 compile_commands.json

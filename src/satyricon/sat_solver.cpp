@@ -75,10 +75,12 @@ bool SATSolver::solve() {
 
 void SATSolver::build_model() {
     model.clear();
-    for ( int i = 0; i < values.size(); i++ ) {
-        assert_message(values[i] != LIT_UNASIGNED,
+    int val = 1;
+    for ( const auto& v : values) {
+        assert_message(v != LIT_UNASIGNED,
                 "Building a model with unsasigned literal");
-        model.push_back( values[i] == LIT_ONE ? i+1 : -(i+1) );
+        model.push_back( v == LIT_ONE ? val : -val );
+        ++val;
     }
 }
 
@@ -105,7 +107,7 @@ literal_value SATSolver::get_asigned_value(const Literal & l) {
             return l.is_negated() ? LIT_ZERO : LIT_ONE;
         case LIT_ZERO:
             return l.is_negated() ? LIT_ONE  : LIT_ZERO;
-        case LIT_UNASIGNED:
+        default:
             return LIT_UNASIGNED;
     }
 }
@@ -173,7 +175,7 @@ void SATSolver::set_number_of_variable(unsigned int n) {
 
     number_of_variable = n;
 
-    for ( auto i = 0; i < n; ++i) {
+    for ( size_t i = 0; i < n; ++i) {
         watch_list[Literal(i,true)];
         watch_list[Literal(i,false)];
     }
@@ -418,10 +420,10 @@ void SATSolver::preprocessing() {
     size_t initial_size = clauses.size();
     log.normal << "preprocessing " << initial_size << " clauses\n";
 
-    for (auto i = 0; i < clauses.size() ; ++i) {
+    for (size_t i = 0; i < clauses.size() ; ++i) {
         // find minimum
         Literal min = clauses[i]->at(0);
-        int min_size = subsumption[min].size();
+        size_t min_size = subsumption[min].size();
 
         for ( const auto& l : *clauses[i] ) {
             if ( subsumption[l].size() < min_size ) {
@@ -430,7 +432,7 @@ void SATSolver::preprocessing() {
             }
         }
 
-        for ( auto j = 0; j < clauses.size(); ++j ) {
+        for ( size_t j = 0; j < clauses.size(); ++j ) {
             if ( clauses[j] != clauses[i] &&
                     clauses[i]->size() <= clauses[j]->size() &&
                     subset(*clauses[i],*clauses[j]) ) {
@@ -456,3 +458,56 @@ string SATSolver::string_conterproof() {
     return oss.str();
 }
 
+void SATSolver::Clause::remove() {
+
+    // remove from watch_list
+    auto it = solver.watch_list[watch[0]].begin();
+    while ( it != solver.watch_list[watch[0]].end() )
+        if ( (*it) == shared_from_this() ) {
+            solver.watch_list[watch[0]].erase(it);
+            break;
+        }
+    it = solver.watch_list[watch[1]].begin();
+    while ( it != solver.watch_list[watch[1]].end() )
+        if ( (*it) == shared_from_this() ) {
+            solver.watch_list[watch[1]].erase(it);
+            break;
+        }
+
+    // remove from subsumption info
+    for ( const auto& l : literals ) {
+        auto it = solver.subsumption[l].begin();
+        while ( it != solver.subsumption[l].end() )
+            if ( (*it) == shared_from_this() ) {
+                solver.subsumption[l].erase(it);
+                break;
+            }
+    }
+}
+
+
+std::string SATSolver::Clause::print() const {
+    if ( literals.empty() ) return "□";
+    std::ostringstream os;
+    auto it = literals.begin();
+    os << "{" << *it++;
+    while ( it != literals.end() ) os << "," << *(it++) ;
+    os << "}";
+    return os.str();
+}
+
+void SATSolver::Clause::print_justification(std::ostream& os, const std::string& prefix) {
+    os << "clause " << print();
+    if ( learned ) {
+        os << " from resolution of " << learned_from[0]->print() <<
+            " and " << learned_from[1]->print() << std::endl;
+        assert_message( learned_from[0] != nullptr && learned_from[1] != nullptr,
+                "learned is nullptr, must be another clause for learned");
+        os << (prefix+"┣╸");
+        learned_from[0]->print_justification(os,prefix+"┃ ");
+        os << (prefix+"┗╸");
+        learned_from[1]->print_justification(os,prefix+"  " );
+    }
+    else
+        os << " from the original formula" << std::endl;
+}

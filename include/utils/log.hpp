@@ -27,6 +27,7 @@ public:
 
     Log& operator=(const Log& other) {
         set_level(other.level);
+        return *this;
     }
 
     std::ostream normal;

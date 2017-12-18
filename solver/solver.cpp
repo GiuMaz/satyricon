@@ -11,6 +11,7 @@
 #include "sat_solver.hpp"
 #include "ArgumentParser.hpp"
 #include "log.hpp"
+#include "literal.hpp"
 
 using namespace std;
 using Utils::ArgumentParser;

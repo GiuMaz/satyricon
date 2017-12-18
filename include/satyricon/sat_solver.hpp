@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <sstream>
 #include "log.hpp"
+#include "literal.hpp"
 
 namespace Satyricon {
 
@@ -115,35 +116,9 @@ public:
     Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
             std::shared_ptr<Clause> first  = nullptr,
             std::shared_ptr<Clause> second = nullptr);
-    ~Clause() {}
 
     // must remove the clausole from the watched list
-    void remove() {
-
-        // remove from watch_list
-        auto it = solver.watch_list[watch[0]].begin();
-        while ( it != solver.watch_list[watch[0]].end() )
-            if ( (*it) == shared_from_this() ) {
-                solver.watch_list[watch[0]].erase(it);
-                break;
-            }
-        it = solver.watch_list[watch[1]].begin();
-        while ( it != solver.watch_list[watch[1]].end() )
-            if ( (*it) == shared_from_this() ) {
-                solver.watch_list[watch[1]].erase(it);
-                break;
-            }
-
-        // remove from subsumption info
-        for ( const auto& l : literals ) {
-            auto it = solver.subsumption[l].begin();
-            while ( it != solver.subsumption[l].end() )
-                if ( (*it) == shared_from_this() ) {
-                    solver.subsumption[l].erase(it);
-                    break;
-                }
-        }
-    }
+    void remove();
 
     // propagate the information after a literal became false
     // return true if the clause become a conflict
@@ -165,42 +140,18 @@ public:
     std::vector<Literal>::size_type size() { return literals.size(); }
     const std::vector<Literal>& get_literals() const { return literals; }
 
-    std::string print() const {
-        std::ostringstream oss;
-        oss << "[ ";
-        for ( const auto& l : literals )
-            oss << l << " ";
-        oss << "]";
-        return oss.str();
-    }
-
+    std::string print() const;
     uint64_t get_signature() const { return signature; }
 
-    void print_justification(std::ostream& os, const std::string& prefix = "") {
-        os << "clause " << print();
-        if ( learned ) {
-            os << " from resolution of " << learned_from[0]->print() <<
-                " and " << learned_from[1]->print() << std::endl;
-            assert_message( learned_from[0] != nullptr && learned_from[1] != nullptr,
-                    "learned is nullptr, must be another clause for learned");
-            os << (prefix+"┣╸");
-            learned_from[0]->print_justification(os,prefix+"┃ ");
-            os << (prefix+"┗╸");
-            learned_from[1]->print_justification(os,prefix+"  " );
-        }
-        else
-            os << " from the original formula" << std::endl;
-
-
-    }
+    void print_justification(std::ostream& os, const std::string& prefix = "");
 
 private:
     uint64_t signature;
     SATSolver& solver;
     std::vector<Literal> literals;
     bool learned;
-    std::shared_ptr<Clause > learned_from[2];
     Literal watch[2];
+    std::shared_ptr<Clause > learned_from[2];
 };
 
 } // end namespace Satyricon
