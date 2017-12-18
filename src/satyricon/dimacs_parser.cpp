@@ -10,9 +10,8 @@
 using namespace std;
 using namespace Satyricon;
 
-void DimacsParser::parse_file( istream & is)
+bool Satyricon::parse_file(SATSolver& solver, istream & is)
 {
-    /*
     int number_of_clausole, number_of_variable;
     string line;
 
@@ -30,14 +29,14 @@ void DimacsParser::parse_file( istream & is)
                     " as first line");
         break;
     }
-    f.number_of_clausole = number_of_clausole;
-    f.number_of_variable = number_of_variable;
+    solver.set_number_of_variable(number_of_variable);
 
+    int read_clausole = 0;
     // read clausoles
-    while (getline(is, line)) {
+    while (getline(is, line) && read_clausole < number_of_clausole ) {
         if ( line.size() == 0 || line[0] == 'c') continue;
 
-        Clause c;
+        std::vector<Literal> c;
         std::istringstream iss(line);
         int value;
 
@@ -51,14 +50,11 @@ void DimacsParser::parse_file( istream & is)
                 throw domain_error(string("invalid variable ")
                         + to_string(value));
 
-            c.literals.push_back( Literal(abs(value-1), value < 0) );
+            c.push_back( Literal(abs(value)-1, value < 0) );
         }
-        f.clausoles.push_back(c);
+        read_clausole++;
+        bool conflict = solver.add_clause(c);
+        if ( conflict ) return true; // found a conflict
     }
-
-    if (f.clausoles.size() != number_of_clausole)
-        throw domain_error("wrong number of clausoles");
-    return f;
-        */
-
+    return false; // no conflict
 }

@@ -8,13 +8,8 @@
 
 namespace Satyricon {
 
-class DimacsParser
-{
-    public:
-        DimacsParser();
-        ~DimacsParser();
-        static void parse_file(std::istream &in);
-};
+// initialize a solver with all the clause in a DIMACS file
+bool parse_file( SATSolver& solver, std::istream &in);
 
 } // end namespace Satyricon
 
