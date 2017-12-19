@@ -1,12 +1,6 @@
-#include "sat_solver.hpp"
-#include "clause.hpp"
-#include "vsids.hpp"
-#include "assert_message.hpp"
-#include <array>
-#include <queue>
 #include <algorithm>
-#include <tuple>
-#include "log.hpp"
+#include "assert_message.hpp"
+#include "clause.hpp"
 
 using namespace std;
 using namespace Utils;
@@ -125,6 +119,59 @@ void SATSolver::Clause::print_justification(std::ostream& os, const std::string&
         os << " from the original formula" << std::endl;
 }
 
+bool SATSolver::Clause::propagate(Literal l);
+
+bool SATSolver::Clause::is_learned() {
+    return learned;
+}
+
+Literal& SATSolver::Clause::at(size_t pos) {
+    return literals[pos];
+}
+
+const Literal& SATSolver::Clause::at(size_t pos) const {
+    return literals[pos];
+}
+
+Literal& SATSolver::Clause::operator[](size_t pos) {
+    return at(pos);
+}
+
+const Literal& SATSolver::Clause::operator[](size_t pos) const {
+    return at(pos);
+}
+
+SATSolver::Clause::const_iterator SATSolver::Clause::begin() const {
+    return literals.begin();
+}
+
+SATSolver::Clause::iterator SATSolver::Clause::begin() {
+    return literals.begin();
+}
+
+SATSolver::Clause::const_iterator SATSolver::Clause::end() const {
+    return literals.end();
+}
+
+SATSolver::Clause::iterator SATSolver::Clause::end() {
+    return literals.end();
+}
+
+std::vector<Literal>& SATSolver::Clause::get_literals() {
+    return literals;
+}
+
+std::vector<Literal>::size_type SATSolver::Clause::size() {
+    return literals.size();
+}
+
+const std::vector<Literal>& SATSolver::Clause::get_literals() const {
+    return literals;
+}
+
+uint64_t SATSolver::Clause::get_signature() const {
+    return signature;
+}
 
 } // end namespace Satyricon
 

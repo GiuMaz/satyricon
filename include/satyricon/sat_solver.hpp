@@ -92,7 +92,6 @@ private:
     std::shared_ptr<Clause> second_counterp;
 
     SubsumptionMap subsumption;
-
 };
 
 } // end namespace Satyricon
