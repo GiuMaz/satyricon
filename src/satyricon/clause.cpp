@@ -2,24 +2,26 @@
 #include "assert_message.hpp"
 #include "clause.hpp"
 
-using namespace std;
-using namespace Utils;
-
 namespace Satyricon {
 
-SATSolver::Clause::Clause(SATSolver& s, vector<Literal> lits, bool learn,
+uint8_t lit_hash( const Literal& l ) {
+    return l.atom()%32 + ( l.is_negated() ? 32 : 0 );
+}
+
+SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
         std::shared_ptr<Clause> first, std::shared_ptr<Clause> second) :
-    solver(s), literals(lits), learned(learn),watch({lits.front(),lits.back()}), learned_from({first,second})
+    signature(0),
+    solver(s),
+    literals(lits),
+    learned(learn),
+    learned_from({first, second})
 {
-    // lambda expression that compute an hash from 0 to 63 for every literal
-    auto lit_hash = [](Literal l) {
-        return l.atom()%32 + (l.is_negated() ?  32 : 0); };
+    if ( literals.empty() ) return;
+    watch[0] = literals.front();
+    watch[1] = literals.back();
 
     // compute the signature, used for smart subsumption elimination
-    signature = 0;
-    for ( auto l : literals )
-        signature|=(1 << lit_hash(l));
-
+    for ( auto l : literals ) signature|=(1 << lit_hash(l));
 }
 
 void SATSolver::Clause::initialize_structure() {
@@ -103,8 +105,8 @@ std::string SATSolver::Clause::print() const {
     return os.str();
 }
 
-void SATSolver::Clause::print_justification(std::ostream& os, const std::string& prefix) {
-    os << "clause " << print();
+void SATSolver::Clause::print_justification(std::ostream& os, const std::string& prefix) const {
+    os << print();
     if ( learned ) {
         os << " from resolution of " << learned_from[0]->print() <<
             " and " << learned_from[1]->print() << std::endl;
@@ -121,7 +123,7 @@ void SATSolver::Clause::print_justification(std::ostream& os, const std::string&
 
 bool SATSolver::Clause::propagate(Literal l);
 
-bool SATSolver::Clause::is_learned() {
+bool SATSolver::Clause::is_learned() const {
     return learned;
 }
 
@@ -161,7 +163,7 @@ std::vector<Literal>& SATSolver::Clause::get_literals() {
     return literals;
 }
 
-std::vector<Literal>::size_type SATSolver::Clause::size() {
+std::vector<Literal>::size_type SATSolver::Clause::size() const {
     return literals.size();
 }
 

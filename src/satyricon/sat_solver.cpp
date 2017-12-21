@@ -35,7 +35,7 @@ SATSolver::SATSolver():
 {}
 
 bool SATSolver::solve() {
-    unsigned long long conflict_counter = 0;
+    unsigned int conflict_counter = 0;
     preprocessing();
     log.normal << "begin solve" << endl;
     while ( true ) {
@@ -215,6 +215,8 @@ void SATSolver::build_conterproof() {
             if ( new_lit.empty() ) { // foundt the empty clause
                 first_counterp = conflict_clause;
                 second_counterp = antecedents[it->atom()];
+                auto new_ptr = make_shared<Clause>(*this,new_lit, true, conflict_clause, antecedents[it->atom()]);
+                conflict_clause = new_ptr;
                 break;
             }
             else {
@@ -361,42 +363,38 @@ void SATSolver::preprocessing() {
 
     size_t initial_size = clauses.size();
     log.normal << "preprocessing " << initial_size << " clauses\n";
+    set<shared_ptr<Clause> > to_remove;
 
-    for (size_t i = 0; i < clauses.size() ; ++i) {
-        // find minimum
-        Literal min = clauses[i]->at(0);
-        size_t min_size = subsumption[min].size();
+    for ( const auto& c : clauses ) {
 
-        for ( const auto& l : *clauses[i] ) {
-            if ( subsumption[l].size() < min_size ) {
-                min_size = subsumption[l].size();
-                min = l;
-            }
-        }
+        if ( to_remove.find(c) != to_remove.end() ) continue;
 
-        for ( size_t j = 0; j < clauses.size(); ++j ) {
-            if ( clauses[j] != clauses[i] &&
-                    clauses[i]->size() <= clauses[j]->size() &&
-                    subset(*clauses[i],*clauses[j]) ) {
-
-                log.verbose << "\tsubsume " << clauses[j]->print() <<
-                    " from " << clauses[i]->print() << endl;
-                clauses.erase(clauses.begin()+j);
-                if ( j < i ) --i;
+        // find the literal with the minimum neighbourn
+        auto min_lit = min_element(c->begin(),c->end(),
+                [&](const Literal& i, const Literal& j)
+                {return subsumption[i].size() < subsumption[j].size();});
+        for ( const auto& w : subsumption[*min_lit] ) {
+            if ( w != c && c->size() <= w->size() && subset(*c,*w) ) {
+                log.verbose << "\tsubsume " << w->print() <<
+                    " from " << c->print() << endl;
+                to_remove.insert(w);
             }
         }
     }
-    log.normal << "removed " << (initial_size - clauses.size()) << " clauses\n";
+
+    log.normal << "removed " << to_remove.size() << " clauses\n";
+
+    vector<shared_ptr<Clause> > new_clauses;
+    for ( const auto& c : clauses )
+        if ( to_remove.find(c) == to_remove.end() )
+            new_clauses.push_back(c);
+    swap(clauses,new_clauses);
+
 }
 
 string SATSolver::string_conterproof() {
     ostringstream oss;
-    oss << "clause □ (empty) from resolution of " << first_counterp->print() << " and " <<
-        second_counterp->print() << endl;
-    oss << "┣╸";
-    first_counterp->print_justification(oss, "┃ ");
-    oss << "┗╸";
-    second_counterp->print_justification(oss,"  ");
+    conflict_clause->print_justification(oss);
     return oss.str();
 }
 

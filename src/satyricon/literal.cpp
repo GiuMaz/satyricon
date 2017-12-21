@@ -2,21 +2,27 @@
 
 namespace Satyricon {
 
+Literal::Literal() : value(0) {}
+
 Literal::Literal(unsigned int _atom, bool _is_negated) :
-    atom_val(_atom), negated(_is_negated)
+    //atom_val(_atom), negated(_is_negated)
+    value( _is_negated ? -_atom-1 : _atom+1 )
 {}
 
 bool Literal::is_negated() const {
-    return negated;
+    //return negated;
+    return value < 0;
 }
 
 unsigned int Literal::atom() const {
-    return atom_val;
+    //return atom_val;
+    return abs(value)-1;
 }
 
 Literal& Literal::operator=(const Literal& other) {
-    atom_val = other.atom_val;
-    negated  = other.negated;
+    //atom_val = other.atom_val;
+    //negated  = other.negated;
+    value = other.value;
     return *this;
 }
 
@@ -33,7 +39,8 @@ bool Literal::operator!=(const Literal& rhs) const {
 }
 
 std::string Literal::print() const {
-    return std::string(negated?"-":"")+std::to_string(atom_val+1);
+    //return std::string(negated?"-":"")+std::to_string(atom_val+1);
+    return std::to_string(value);
 }
 
 std::ostream& operator<<(std::ostream &os, Literal const &l) {

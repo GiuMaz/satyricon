@@ -11,9 +11,8 @@ namespace Satyricon {
 
 /* Clause class
  * A Clause is related to a specific SAT instance.
- * It contein not only the literal vector but also information for efficent
- * analysis of the problem status
- *
+ * It contein not only the literal vector but also information for
+ * efficent analysis of the problem status
  * enable_shared_from_this allow to use the class like a smart pointer of
  * itself, usefull for managing the wath_list
  */
@@ -23,6 +22,7 @@ public:
 
     typedef std::vector<Literal>::iterator iterator;
     typedef std::vector<Literal>::const_iterator const_iterator;
+
     // disable empy constructor, a clause must refer to a SAT instance
     Clause() = delete;
     Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
@@ -38,7 +38,7 @@ public:
 
     // return true if the clause is a clause learned by a conflict
     // false otherwise
-    bool is_learned();
+    bool is_learned() const;
 
     // initialize strucuture inside the solve that handle this specific
     // clause. It initialize watch_list and subsumption structure
@@ -57,7 +57,7 @@ public:
     iterator end();
 
     // the clause size is the number of literals inside it
-    std::vector<Literal>::size_type size();
+    std::vector<Literal>::size_type size() const;
 
     // pretty printing of clause
     std::string print() const;
@@ -69,7 +69,7 @@ public:
     // if the clasue is one of the original clause it simply print that.
     // if the clause is a learned one it also print the justification
     // of the two parents that generate the clause
-    void print_justification(std::ostream& os, const std::string& prefix = "");
+    void print_justification(std::ostream& os, const std::string& prefix = "") const;
 
 private:
     uint64_t signature;

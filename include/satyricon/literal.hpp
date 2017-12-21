@@ -24,6 +24,7 @@ enum literal_value {
 class Literal {
 public:
     // constructor
+    Literal();
     Literal(unsigned int _atom, bool _is_negated);
 
     // getter
@@ -43,8 +44,11 @@ public:
     std::string print() const;
 
 private:
+    int value;
+    /*
     unsigned int atom_val;
     bool negated;
+    */
 };
 
 // usefull print method
