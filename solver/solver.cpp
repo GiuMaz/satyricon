@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
     if ( print_proof && satisfiable == true )
         cout << "Model: " << endl << solver.string_model() << endl;
     if ( print_proof && satisfiable == false )
-        cout << "Counterproof: " << endl << solver.string_conterproof() << endl;
+        cout << "proof: " << endl << solver.string_conterproof() << endl;
 
     return 0;
 }

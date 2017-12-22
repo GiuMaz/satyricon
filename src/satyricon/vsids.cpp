@@ -8,10 +8,8 @@ VSIDS_Info::VSIDS_Info():
     positive(),
     negative(),
     update_value(1.0),
-    max_update (std::numeric_limits<double>::max()/(100 + 1)),
-    decay_factor(2.0),
-    decay_limit(100),
-    decay_counter(0) 
+    max_update(std::numeric_limits<double>::max()/100),
+    decay_factor(2.0)
 {}
 
 void VSIDS_Info::set_size( size_t size ) {
@@ -19,29 +17,23 @@ void VSIDS_Info::set_size( size_t size ) {
     negative.resize(size, 0.0);
 }
 
-void VSIDS_Info::set_parameter(double decay, int limit) {
+void VSIDS_Info::set_parameter(double decay) {
     decay_factor = decay;
-    decay_limit = limit;
-    max_update = std::numeric_limits<double>::max()/(limit + 1);
+}
+
+void VSIDS_Info::renormalize_big_number() {
+    for(auto& i : positive)
+        i/=update_value;
+    for(auto& i : negative)
+        i/=update_value;
+    update_value = 1.0;
 }
 
 void VSIDS_Info::decay() {
-    decay_counter++;
+    if (update_value > max_update )
+        renormalize_big_number();
 
-    if ( decay_counter >= decay_limit ) {
-
-        decay_counter = 0;
-
-        if (update_value > max_update ) {
-            for(auto& i : positive)
-                i/=update_value;
-            for(auto& i : negative)
-                i/=update_value;
-            update_value = 1.0;
-        }
-
-        update_value*=decay_factor;
-    }
+    update_value*=decay_factor;
 }
 
 Literal VSIDS_Info::select_new(const std::vector<literal_value>& assignment) {
@@ -49,6 +41,7 @@ Literal VSIDS_Info::select_new(const std::vector<literal_value>& assignment) {
     int max_atom = -1;
     double max_value = -1.0;
 
+    // find the maximum value.
     for (size_t i =0; i < positive.size(); ++i)
         if ( positive[i] > max_value && assignment[i] == LIT_UNASIGNED ) {
             max_value =  positive[i];
@@ -61,8 +54,9 @@ Literal VSIDS_Info::select_new(const std::vector<literal_value>& assignment) {
             max_value =  negative[i];
             max_atom = i;
         }
-    assert_message(max_atom >= 0,
-            "Unable to find a new literal in VSIDS");
+
+    assert_message(max_atom >= 0, "Unable to find a new literal in VSIDS");
+
     return Literal(max_atom,max_negated);
 }
 

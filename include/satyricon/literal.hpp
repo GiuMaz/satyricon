@@ -56,14 +56,20 @@ std::ostream& operator<<(std::ostream &os, Literal const &l);
 std::ostream& operator<<(std::ostream &os, std::set<Literal> const &s);
 std::ostream& operator<<(std::ostream &os, std::vector<Literal> const &v);
 
+} // end namespace Satyricon
+
+namespace std {
+
+template <>
+
 // support hash class, usefull for unordered_map (hash map)
-struct LitHash
+struct hash<Satyricon::Literal>
 {
-    size_t operator()(const Literal& k) const {
-        return k.is_negated() ? -k.atom() : k.atom();
+    std::size_t operator()(const Satyricon::Literal& k) const {
+        return hash<int>()(k.atom());
     }
 };
 
-} // end namespace Satyricon
+}
 
 #endif

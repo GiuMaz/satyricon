@@ -29,8 +29,6 @@ SATSolver::SATSolver():
     current_level(0),
     log(Utils::LOG_NONE),
     model(),
-    first_counterp(),
-    second_counterp(),
     subsumption()
 {}
 
@@ -48,9 +46,9 @@ bool SATSolver::solve() {
                 log.normal << "conflict: " << conflict_counter << endl;
 
             if ( current_level == 0 ) {
-                log.verbose << "conflict at level 0, build counterproof\n";
-                build_conterproof();
-                return false; // unsolvable conflict
+                log.verbose << "conflict at level 0, build unsat proof\n";
+                build_unsat_proof();
+                return false; // UNSAT
             }
 
             auto backtrack_level  = conflict_analysis();
@@ -61,8 +59,9 @@ bool SATSolver::solve() {
         else {
 
             if ( number_of_assigned_variable == number_of_variable ) {
+                log.verbose << "assinged all literals without conflict\n";
                 build_model();
-                return true; // found a model
+                return true; // SAT
             }
 
             // otherwise select a new literal
@@ -81,7 +80,7 @@ void SATSolver::build_model() {
         assert_message(v != LIT_UNASIGNED,
                 "Building a model with unsasigned literal");
         model.push_back( v == LIT_TRUE ? val : -val );
-        ++val;
+        val++;
     }
 }
 
@@ -192,13 +191,14 @@ Literal SATSolver::decide_new_literal() {
     return vsids.select_new(values);
 }
 
-void SATSolver::build_conterproof() {
+void SATSolver::build_unsat_proof() {
 
     for( auto it = trial.rbegin(); it != trial.rend(); ++it) {
 
-        if (find(conflict_clause->begin(), conflict_clause->end(), !(*it)) != conflict_clause->end()) {
+        if (find(conflict_clause->begin(), conflict_clause->end(),
+                    !(*it)) != conflict_clause->end()) {
 
-            log.verbose << "\t" << conflict_clause->print() << " | "
+            log.verbose << "\t resolve " << conflict_clause->print() << " and "
                 << antecedents[it->atom()]->print();
 
             std::vector<Literal> new_lit;
@@ -212,17 +212,11 @@ void SATSolver::build_conterproof() {
                 new_lit.push_back(l);
             }
             log.verbose << " -> "  << new_lit << endl;
-            if ( new_lit.empty() ) { // foundt the empty clause
-                first_counterp = conflict_clause;
-                second_counterp = antecedents[it->atom()];
-                auto new_ptr = make_shared<Clause>(*this,new_lit, true, conflict_clause, antecedents[it->atom()]);
-                conflict_clause = new_ptr;
-                break;
-            }
-            else {
-                auto new_ptr = make_shared<Clause>(*this,new_lit, true, conflict_clause, antecedents[it->atom()]);
-                conflict_clause = new_ptr;
-            }
+
+            auto new_ptr = make_shared<Clause>(*this,new_lit, true,
+                    conflict_clause, antecedents[it->atom()]);
+            conflict_clause = new_ptr;
+            if ( conflict_clause->size() == 0 ) break; // found the empty clause
         }
     }
 }
@@ -349,8 +343,8 @@ void SATSolver::backtrack(int backtrack_level) {
 
 bool SATSolver::subset( const Clause& inner,const Clause& outer) {
     // prefilter using signature
-    if ( (inner.get_signature() & ~outer.get_signature()) != 0 )
-        return false;
+    if ( (inner.get_signature() & ~outer.get_signature()) != 0 ) return false;
+
     // more expansive but precise inclusion check
     for ( const auto& l : inner )
         if ( find(outer.begin(), outer.end(), l) == outer.end() )
@@ -360,30 +354,35 @@ bool SATSolver::subset( const Clause& inner,const Clause& outer) {
 }
 
 void SATSolver::preprocessing() {
+    log.normal << "preprocessing " << clauses.size() << " clauses\n";
 
-    size_t initial_size = clauses.size();
-    log.normal << "preprocessing " << initial_size << " clauses\n";
+    // collect clause to eliminate
     set<shared_ptr<Clause> > to_remove;
 
     for ( const auto& c : clauses ) {
 
-        if ( to_remove.find(c) != to_remove.end() ) continue;
+        if ( to_remove.find(c) != to_remove.end() ) continue; // already removed
 
-        // find the literal with the minimum neighbourn
+        // find the literal with the minimum neighbourn, it's the cheaper
+        // to iterate.
         auto min_lit = min_element(c->begin(),c->end(),
                 [&](const Literal& i, const Literal& j)
                 {return subsumption[i].size() < subsumption[j].size();});
-        for ( const auto& w : subsumption[*min_lit] ) {
-            if ( w != c && c->size() <= w->size() && subset(*c,*w) ) {
-                log.verbose << "\tsubsume " << w->print() <<
+
+        // iterate all the clause that contain a compatible literal.
+        for ( const auto& o : subsumption[*min_lit] ) {
+            if ( o != c && c->size() <= o->size() && subset(*c,*o) ) {
+                // if is possible to subsume a clause, put it inside the set
+                log.verbose << "\tsubsume " << o->print() <<
                     " from " << c->print() << endl;
-                to_remove.insert(w);
+                to_remove.insert(o);
             }
         }
     }
 
     log.normal << "removed " << to_remove.size() << " clauses\n";
 
+    // generate a new clause vector without the subsumed clauses
     vector<shared_ptr<Clause> > new_clauses;
     for ( const auto& c : clauses )
         if ( to_remove.find(c) == to_remove.end() )
@@ -394,6 +393,7 @@ void SATSolver::preprocessing() {
 
 string SATSolver::string_conterproof() {
     ostringstream oss;
+    // print the justification for the conflict clause
     conflict_clause->print_justification(oss);
     return oss.str();
 }

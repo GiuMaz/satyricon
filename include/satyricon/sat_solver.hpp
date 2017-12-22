@@ -34,9 +34,9 @@ private:
     // forward declaration of support class Clause
     class Clause;
     using WatchMap =
-        std::unordered_map<Literal,std::list<std::shared_ptr<Clause> >,LitHash>;
+        std::unordered_map<Literal,std::list<std::shared_ptr<Clause> >>;
     using SubsumptionMap =
-        std::unordered_map<Literal,std::list<std::shared_ptr<Clause> >,LitHash>;
+        std::unordered_map<Literal,std::list<std::shared_ptr<Clause> >>;
 
     bool learn_clause();
 
@@ -59,7 +59,7 @@ private:
     // and a proper backtrack level
     int conflict_analysis();
 
-    void build_conterproof();
+    void build_unsat_proof();
 
     // Preprocess the set of clause
     void preprocessing();
@@ -88,8 +88,6 @@ private:
     Utils::Log log;
 
     std::vector<int> model;
-    std::shared_ptr<Clause> first_counterp;
-    std::shared_ptr<Clause> second_counterp;
 
     SubsumptionMap subsumption;
 };

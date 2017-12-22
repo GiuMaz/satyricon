@@ -4,6 +4,7 @@
 
 namespace Satyricon {
 
+// utility function that compute the hash of a literal, in range 0..63
 uint8_t lit_hash( const Literal& l ) {
     return l.atom()%32 + ( l.is_negated() ? 32 : 0 );
 }
@@ -21,7 +22,8 @@ SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
     watch[1] = literals.back();
 
     // compute the signature, used for smart subsumption elimination
-    for ( auto l : literals ) signature|=(1 << lit_hash(l));
+    for ( auto l : literals )
+        signature|=(1 << lit_hash(l));
 }
 
 void SATSolver::Clause::initialize_structure() {
@@ -35,10 +37,11 @@ void SATSolver::Clause::initialize_structure() {
 }
 
 bool SATSolver::Clause::propagate(Literal l) {
-    // move the wrong literal in 0
+    // make sure that the problematic literal is in watch[0]
     if (solver.get_asigned_value(watch[1]) == LIT_FALSE)
         std::swap(watch[0],watch[1]);
 
+    // if the clause is already solved, nothing need to be moved
     if (solver.get_asigned_value(watch[1]) == LIT_TRUE) {
         // reinsert inside the previous watch list
         solver.watch_list[l].push_back(shared_from_this());
@@ -55,10 +58,9 @@ bool SATSolver::Clause::propagate(Literal l) {
         }
     }
 
-    // no new literal to watch, reinsert in the old position and check
-    // if the clause is a unit or a conflict
+    // no new literal to watch, reinsert in the old position
     solver.watch_list[l].push_back(shared_from_this());
-
+    // if no new literal is available, the clause must be a unit or a conflict
     if ( solver.get_asigned_value(watch[1]) == LIT_UNASIGNED ) {
         // assign the unit
         solver.assign(watch[1],shared_from_this());
@@ -87,15 +89,16 @@ void SATSolver::Clause::remove() {
     // remove from subsumption info
     for ( const auto& l : literals ) {
         auto it = solver.subsumption[l].begin();
-        while ( it != solver.subsumption[l].end() )
-            if ( (*it) == shared_from_this() ) {
-                solver.subsumption[l].erase(it);
-                break;
-            }
+        while ( it != solver.subsumption[l].end() ) {
+            if ( (*it) != shared_from_this() ) continue;
+            solver.subsumption[l].erase(it);
+            break;
+        }
     }
 }
 
 std::string SATSolver::Clause::print() const {
+    // special simbol for empty clause
     if ( literals.empty() ) return "□";
     std::ostringstream os;
     auto it = literals.begin();
@@ -105,19 +108,24 @@ std::string SATSolver::Clause::print() const {
     return os.str();
 }
 
-void SATSolver::Clause::print_justification(std::ostream& os, const std::string& prefix) const {
-    os << print();
+void SATSolver::Clause::print_justification(std::ostream& os,
+        const std::string& prefix) const {
+    os << print(); // print the clause
     if ( learned ) {
+        // if learned, explain how the clause was learned
+        assert_message(learned_from[0] != nullptr && learned_from[1] != nullptr,
+                "learned is nullptr, must be another clause for learned");
+
         os << " from resolution of " << learned_from[0]->print() <<
             " and " << learned_from[1]->print() << std::endl;
-        assert_message( learned_from[0] != nullptr && learned_from[1] != nullptr,
-                "learned is nullptr, must be another clause for learned");
+
         os << (prefix+"┣╸");
         learned_from[0]->print_justification(os,prefix+"┃ ");
         os << (prefix+"┗╸");
         learned_from[1]->print_justification(os,prefix+"  " );
     }
     else
+        // if not learned, simply refer to the original forumal
         os << " from the original formula" << std::endl;
 }
 

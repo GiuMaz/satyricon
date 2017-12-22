@@ -40,21 +40,9 @@ public:
     // false otherwise
     bool is_learned() const;
 
-    // initialize strucuture inside the solve that handle this specific
+    // initialize structures inside the solver that handle this specific
     // clause. It initialize watch_list and subsumption structure
     void initialize_structure();
-
-    // literals access and iteration
-    std::vector<Literal>& get_literals();
-    const std::vector<Literal>& get_literals() const;
-    Literal& at(size_t pos);
-    const Literal& at(size_t pos) const;
-    Literal& operator[](size_t pos);
-    const Literal& operator[](size_t pos) const;
-    const_iterator begin() const;
-    iterator begin();
-    const_iterator end() const;
-    iterator end();
 
     // the clause size is the number of literals inside it
     std::vector<Literal>::size_type size() const;
@@ -69,7 +57,20 @@ public:
     // if the clasue is one of the original clause it simply print that.
     // if the clause is a learned one it also print the justification
     // of the two parents that generate the clause
-    void print_justification(std::ostream& os, const std::string& prefix = "") const;
+    void print_justification(std::ostream& os,
+            const std::string& prefix = "") const;
+
+    // literals access and iteration
+    std::vector<Literal>& get_literals();
+    const std::vector<Literal>& get_literals() const;
+    Literal& at(size_t pos);
+    const Literal& at(size_t pos) const;
+    Literal& operator[](size_t pos);
+    const Literal& operator[](size_t pos) const;
+    const_iterator begin() const;
+    iterator begin();
+    const_iterator end() const;
+    iterator end();
 
 private:
     uint64_t signature;

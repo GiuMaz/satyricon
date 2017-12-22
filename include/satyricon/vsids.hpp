@@ -16,7 +16,7 @@ public:
     // set the number of variable to track
     void set_size( size_t size );
 
-    void set_parameter(double decay, int limit);
+    void set_parameter(double decay);
 
     void decay();
 
@@ -25,14 +25,13 @@ public:
     void update(const Literal& lit);
 
 private:
+    void renormalize_big_number();
+
     std::vector<double> positive;
     std::vector<double> negative;
     double update_value;
     double max_update;
-
     double decay_factor;
-    int decay_limit;
-    int decay_counter;
 };
 
 } // end namespace Satyricon
