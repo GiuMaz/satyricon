@@ -1,6 +1,3 @@
-/**
- * SAT solver.
- */
 #include <iostream>
 #include <iomanip>
 #include <exception>
@@ -15,6 +12,9 @@
 using namespace std;
 using Utils::ArgumentParser;
 
+/**
+ * SAT solver from CLI
+ */
 int main(int argc, char* argv[])
 {
     // ARGUMENT PARSING
@@ -25,6 +25,7 @@ int main(int argc, char* argv[])
             " --- write long description --- "
             );
 
+    // build options for command line interface usage
     auto& in = parser.make_positional<string>("input","input file");
     auto& help = parser.make_flag("help",
             "print this message and exit",{"h","help"});
@@ -98,7 +99,7 @@ int main(int argc, char* argv[])
 
         // if found a conflict at level zero, report the conflict
         if ( conflict ) {
-            log.verbose << "found a conflict during the solver construction\n";
+            log.verbose << "found a conflict during solver construction\n";
             log.normal << "UNSATISFIABLE" << endl;
             return 0;
         }
@@ -120,7 +121,8 @@ int main(int argc, char* argv[])
 
     auto end_time = chrono::steady_clock::now();
     chrono::duration<double> elapsed = end_time - start;
-    log.normal << "completed in: " << fixed << setprecision(2) << elapsed.count() << "s\n";
+    log.normal << "completed in: " << fixed << setprecision(2) <<
+        elapsed.count() << "s\n";
 
     log.normal << (satisfiable ? "SATISFIABLE" : "UNSATISFIABLE") << endl;
     if ( print_sat && satisfiable == true )

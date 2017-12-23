@@ -88,7 +88,7 @@ bool SATSolver::solve() {
             if ( current_level == 0 ) {
                 log.verbose << "conflict at level 0, build unsat proof\n";
                 build_unsat_proof();
-                cout << "number of restart: " << restart_counter<< endl;
+                log.normal << "number of restart: " << restart_counter<< endl;
                 return false; // UNSAT
             }
 
