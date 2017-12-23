@@ -518,5 +518,13 @@ void SATSolver::reduce_learned() {
     learned.resize( j );
 }
 
+void SATSolver::set_clause_decay(double cd_factor) {
+    clause_decay_factor = cd_factor;
+}
+
+void SATSolver::set_literal_decay(double ld_factor) {
+    vsids.set_parameter(ld_factor);
+}
+
 } // end namespace Satyricon
 

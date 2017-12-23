@@ -36,6 +36,14 @@ int main(int argc, char* argv[])
     auto& no_preproc = parser.make_flag("no_preprocessing",
             "disable preprocessing of clause",{"no-preprocessing"});
 
+    double decay_literal_factor = 1.05, decay_clauses_factor = 1.001;
+    auto& clause_decay = parser.make_option<float>("clause decay",
+            "decay factor for activity of clauses (default: " +
+            std::to_string(decay_clauses_factor)+")",{"c-decay"});
+    auto& literal_decay = parser.make_option<float>("literal decay",
+            "decay factor for activity of literal (defualt: "+
+            std::to_string(decay_literal_factor)+")",{"l-decay"});
+
     // parsing argument
     try {
         parser.parseCLI(argc,argv);
@@ -54,6 +62,10 @@ int main(int argc, char* argv[])
     // redirect input file
     if ( in ) freopen( in.get_value().c_str(), "r", stdin);
 
+    // decay values
+    if ( clause_decay )  decay_clauses_factor = clause_decay.get_value();
+    if ( literal_decay ) decay_literal_factor = literal_decay.get_value();
+
 // -----------------------------------------------------------------------------
 
     // SOLVER
@@ -68,12 +80,16 @@ int main(int argc, char* argv[])
     try {
         bool conflict = Satyricon::parse_file(solver,cin);
 
+        // get initilization time
         auto init_time = chrono::steady_clock::now();
         chrono::duration<double> elapsed = init_time - start;
-        log.normal << "read file and initialized solver in: " << elapsed.count() << "s\n";
+        log.normal << "read file and initialized solver in: " <<
+            fixed << setprecision(2) << elapsed.count() << "s\n";
+
+        // if found a conflict at level zero, report the conflict
         if ( conflict ) {
             log.verbose << "found a conflict during the solver construction\n";
-            log.normal << "insoddisfacibile\n";
+            log.normal << "UNSATISFIABLE" << endl;
             return 0;
         }
     }
@@ -82,8 +98,13 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // set option in solver
+    // set options in solver
+    // enable preprocessing
     if ( no_preproc ) solver.set_preprocessing(false);
+    
+    // decaying factor
+    solver.set_clause_decay(decay_clauses_factor);
+    solver.set_literal_decay(decay_literal_factor);
 
     auto satisfiable = solver.solve();
 
@@ -95,7 +116,7 @@ int main(int argc, char* argv[])
     if ( print_proof && satisfiable == true )
         cout << "Model: " << endl << solver.string_model() << endl;
     if ( print_proof && satisfiable == false )
-        cout << "proof: " << endl << solver.string_conterproof() << endl;
+        cout << "proof: " << endl << solver.string_conterproof();
 
     return 0;
 }

@@ -27,6 +27,9 @@ public:
     const std::vector<int>& get_model();
     std::string string_model();
 
+    void set_clause_decay(double clause_decay_factor);
+    void set_literal_decay(double literal_decay_factor);
+
     std::string string_conterproof();
 
     void set_preprocessing(bool p);
