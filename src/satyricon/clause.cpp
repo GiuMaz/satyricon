@@ -75,27 +75,34 @@ void SATSolver::Clause::remove() {
 
     // remove from watch_list
     auto it = solver.watch_list[watch[0]].begin();
-    while ( it != solver.watch_list[watch[0]].end() )
+    while ( it != solver.watch_list[watch[0]].end() ) {
         if ( (*it) == shared_from_this() ) {
             solver.watch_list[watch[0]].erase(it);
             break;
         }
+        ++it;
+    }
     it = solver.watch_list[watch[1]].begin();
-    while ( it != solver.watch_list[watch[1]].end() )
+    while ( it != solver.watch_list[watch[1]].end() ) {
         if ( (*it) == shared_from_this() ) {
             solver.watch_list[watch[1]].erase(it);
             break;
         }
-
+        ++it;
+    }
     // remove from subsumption info
+    /*
     for ( const auto& l : literals ) {
         auto it = solver.subsumption[l].begin();
         while ( it != solver.subsumption[l].end() ) {
-            if ( (*it) != shared_from_this() ) continue;
-            solver.subsumption[l].erase(it);
-            break;
+            if ( (*it) == shared_from_this() ) {
+                solver.subsumption[l].erase(it);
+                break;
+            }
+            ++it;
         }
     }
+    */
 }
 
 std::string SATSolver::Clause::print() const {
@@ -128,6 +135,11 @@ void SATSolver::Clause::print_justification(std::ostream& os,
     else
         // if not learned, simply refer to the original forumal
         os << " from the original formula" << std::endl;
+}
+
+void SATSolver::Clause::update_activity() {
+    if ( learned )
+        activity+=solver.clause_activity_update;
 }
 
 bool SATSolver::Clause::propagate(Literal l);

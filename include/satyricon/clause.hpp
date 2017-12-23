@@ -24,9 +24,7 @@ public:
     typedef std::vector<Literal>::const_iterator const_iterator;
 
     double activity;
-    void update_activity() {
-        activity+=solver.clause_activity_update;
-    }
+    void update_activity();
 
     // disable empy constructor, a clause must refer to a SAT instance
     Clause() = delete;
@@ -34,7 +32,7 @@ public:
             std::shared_ptr<Clause> first  = nullptr,
             std::shared_ptr<Clause> second = nullptr);
 
-    // must remove the clausole from the watched list
+   // must remove the clausole from the watched list
     void remove();
 
     // propagate the information after a literal became false

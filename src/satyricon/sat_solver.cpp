@@ -6,6 +6,7 @@
 #include <queue>
 #include <algorithm>
 #include <tuple>
+#include <iomanip>
 #include "log.hpp"
 
 using namespace std;
@@ -31,12 +32,18 @@ SATSolver::SATSolver():
     model(),
     subsumption(),
     enable_preprocessing(true),
-    restart_interval_multiplier(2),
+    restart_interval_multiplier(10),
     restart_threshold(1),
     clause_activity_update(1.0),
-    clause_decay_factor(1.05)
+    clause_decay_factor(1.001)
 {}
 
+void SATSolver::print_status(unsigned int conflict, unsigned int restart, unsigned int learn_limit) {
+    log.normal << "conflict: " << setw(7) << conflict <<
+        ", restart: " << setw(7) <<  restart <<
+        ", learn limit: " << setw(7) <<  learn_limit <<
+        ", learned: " << setw(7) <<  learned.size() << endl;
+}
 void SATSolver::set_preprocessing(bool p) {
     enable_preprocessing = p;
 }
@@ -63,6 +70,9 @@ bool SATSolver::solve() {
     unsigned int conflict_counter = 0;
     int restart_counter = 0;
 
+    // maximum number of learned clause
+    unsigned int learn_limit = clauses.size()*2;
+
     if ( enable_preprocessing) preprocessing();
     restart_threshold = new_restart_threshold();
 
@@ -73,7 +83,7 @@ bool SATSolver::solve() {
         if ( conflict ) {
             conflict_counter++;
             if ( conflict_counter % 1000 == 0 )
-                log.normal << "conflict: " << conflict_counter << endl;
+                print_status(conflict_counter,restart_counter, learn_limit);
 
             if ( current_level == 0 ) {
                 log.verbose << "conflict at level 0, build unsat proof\n";
@@ -92,13 +102,19 @@ bool SATSolver::solve() {
 
         }
         else {
-
             if ( number_of_assigned_variable == number_of_variable ) {
                 log.verbose << "assinged all literals without conflict\n";
                 build_model();
-                cout << "number of restart: " << restart_counter<< endl;
+                log.normal << "number of restart: " << restart_counter<< endl;
                 return true; // SAT
             }
+
+            if ( learned.size() >= learn_limit ) {
+                learn_limit+= (learn_limit/2); // increase the learning limit
+                reduce_learned(); // remove low activity clause
+            }
+
+
             if ( conflict_counter >= restart_threshold ) {
                 restart_threshold += new_restart_threshold();
                 restart_counter++;
@@ -377,7 +393,7 @@ bool SATSolver::add_clause( const std::vector<Literal>& c ) {
 
 void SATSolver::backtrack(int backtrack_level) {
 
-    assert_message(backtrack_level < current_level,
+    assert_message(backtrack_level <= current_level,
             "impossible to backtrack forward");
 
     log.verbose << "bactrack to level " << backtrack_level << " from " << current_level << endl;
@@ -464,6 +480,43 @@ void SATSolver::clause_activity_decay() {
     clause_activity_update*=clause_decay_factor;
 }
 
+void SATSolver::reduce_learned() {
+    size_t i = 0, j = 0;
+    // sort learned clause by activity (in ascending order)
+    sort(learned.begin(), learned.end(),
+            [&](const shared_ptr<Clause>& l, const shared_ptr<Clause>& r)
+                { return l->activity < r->activity; });
+
+    log.verbose << "sorted, from " << learned.front()->activity <<
+        " to " << learned.back()->activity << " of " <<
+        learned.size() << " clauses"<< endl;
+
+    // delete the first half of the clause, exept clauses that are
+    // the antecedent of some assigned literal
+    set<shared_ptr<Clause> > not_removable;
+    for ( const auto& c : antecedents ) 
+        if ( c != nullptr && c->is_learned() )
+            not_removable.insert(c);
+
+    // remove the first half
+    for ( ; i < learned.size()/2 ; ++i ) {
+        if ( not_removable.find(learned[i]) != not_removable.end() )
+            learned[j++] = learned[i];
+        else
+            learned[i]->remove();
+    }
+
+    // move the second half in the beginning
+    for (; i < learned.size(); ++i)
+        learned[j++] = learned[i];
+
+    log.verbose << "after elimination, from " << learned.front()->activity <<
+        " to " << learned.back()->activity << " of " <<
+        learned.size() << " clauses"<< endl;
+
+    // keep only the most active clause
+    learned.resize( j );
+}
 
 } // end namespace Satyricon
 

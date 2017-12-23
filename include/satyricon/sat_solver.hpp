@@ -32,6 +32,9 @@ public:
     void set_preprocessing(bool p);
 private:
 
+void print_status(unsigned int conflict, unsigned int restart,
+        unsigned int learn_limit);
+
     void build_model();
     // forward declaration of support class Clause
     class Clause;
@@ -71,6 +74,7 @@ private:
     int next_restart_interval();
     int new_restart_threshold();
 
+    void reduce_learned();
     // clause collections
     std::vector<std::shared_ptr<Clause> > clauses;
     std::vector<std::shared_ptr<Clause> > learned;
