@@ -32,6 +32,8 @@ SATSolver::SATSolver():
     model(),
     subsumption(),
     enable_preprocessing(true),
+    enable_restart(true),
+    enable_deletion(true),
     restart_interval_multiplier(10),
     restart_threshold(1),
     clause_activity_update(1.0),
@@ -39,13 +41,24 @@ SATSolver::SATSolver():
 {}
 
 void SATSolver::print_status(unsigned int conflict, unsigned int restart, unsigned int learn_limit) {
-    log.normal << "conflict: " << setw(7) << conflict <<
-        ", restart: " << setw(7) <<  restart <<
-        ", learn limit: " << setw(7) <<  learn_limit <<
-        ", learned: " << setw(7) <<  learned.size() << endl;
+    log.normal << "conflict: " << setw(7) << conflict;
+    if ( enable_restart )
+        log.normal << ", restart: " << setw(7) <<  restart;
+    if ( enable_deletion )
+        log.normal << ", learn limit: " << setw(7) <<  learn_limit;
+    log.normal << ", learned: " << setw(7) <<  learned.size() << endl;
 }
+
 void SATSolver::set_preprocessing(bool p) {
     enable_preprocessing = p;
+}
+
+void SATSolver::set_restart(bool r) {
+    enable_restart = r;
+}
+
+void SATSolver::set_deletion(bool d) {
+    enable_deletion = d;
 }
 
 int SATSolver::next_restart_interval() {
@@ -109,13 +122,12 @@ bool SATSolver::solve() {
                 return true; // SAT
             }
 
-            if ( learned.size() >= learn_limit ) {
+            if ( enable_deletion && learned.size() >= learn_limit ) {
                 learn_limit+= (learn_limit/2); // increase the learning limit
                 reduce_learned(); // remove low activity clause
             }
 
-
-            if ( conflict_counter >= restart_threshold ) {
+            if ( enable_restart && conflict_counter >= restart_threshold ) {
                 restart_threshold += new_restart_threshold();
                 restart_counter++;
                 log.verbose << "restarting. next restart at " << restart_threshold << endl;

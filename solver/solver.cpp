@@ -25,24 +25,34 @@ int main(int argc, char* argv[])
             " --- write long description --- "
             );
 
-    // build options for command line interface usage
+    // input file (if not specified, read from stdin
     auto& in = parser.make_positional<string>("input","input file");
+
+    // print help
     auto& help = parser.make_flag("help",
             "print this message and exit",{"h","help"});
-
-    auto& print_sat_proof = parser.make_flag("sat_proof",
-            "print the model if the formula is satisfiable",{"s","print-sat"});
-    auto& print_unsat_proof = parser.make_flag("unsat_proof",
-            "print proof when the formula is unsatisfiable",{"u","print-unsat"});
-    auto& print_proof = parser.make_flag("print_proof",
-            "print proof (both for sat and unsat)",{"p","proof"});
-
+    // verbose output
     auto& verbose = parser.make_flag("verbose",
             "print the resolution process step by step.\n"
             "WARNING: can be really expansive",{"v","verbose"});
+
+    // print proof
+    auto& print_sat_proof = parser.make_flag("sat_proof",
+            "print the model if the formula is satisfiable",{"s","proof-sat"});
+    auto& print_unsat_proof = parser.make_flag("unsat_proof",
+            "print proof if the formula is unsatisfiable",{"u","proof-unsat"});
+    auto& print_proof = parser.make_flag("print_proof",
+            "print proof (both for sat and unsat)",{"p","proof"});
+
+    // disable feature (for testing purpose)
     auto& no_preproc = parser.make_flag("no_preprocessing",
             "disable preprocessing of clause",{"no-preprocessing"});
+    auto& no_restart = parser.make_flag("no_restart",
+            "disable search restart",{"no-restart"});
+    auto& no_deletion = parser.make_flag("no_deletion",
+            "disable deletion of learned clauses",{"no-deletion"});
 
+    // decay policy
     double decay_literal_factor = 1.05, decay_clauses_factor = 1.001;
     auto& clause_decay = parser.make_option<float>("clause decay",
             "decay factor for activity of clauses (default: " +
@@ -110,8 +120,11 @@ int main(int argc, char* argv[])
     }
 
     // set options in solver
-    // enable preprocessing
-    if ( no_preproc ) solver.set_preprocessing(false);
+
+    // disable features
+    if ( no_preproc  ) solver.set_preprocessing(false);
+    if ( no_restart  ) solver.set_restart(false);
+    if ( no_deletion ) solver.set_deletion(false);
     
     // decaying factor
     solver.set_clause_decay(decay_clauses_factor);
