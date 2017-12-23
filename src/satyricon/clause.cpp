@@ -18,12 +18,15 @@ SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
     learned(learn),
     learned_from({first, second})
 {
+    // if the clause is empty, don't do anything
     if ( literals.empty() ) return;
+
+    // fix the watch literal
     watch[0] = literals.front();
     watch[1] = literals.back();
 
     // compute the signature, used for smart subsumption elimination
-    for ( auto l : literals )
+    for ( const auto& l : literals )
         signature|=(1 << lit_hash(l));
 }
 
@@ -50,7 +53,7 @@ bool SATSolver::Clause::propagate(Literal l) {
     }
 
     // search a new literal to watch
-    for ( auto u : literals ) {
+    for ( const auto& u : literals ) {
         if (solver.get_asigned_value(u) != LIT_FALSE && u != watch[1]) {
             // foundt a valid literal, move the watch_list
             watch[0] = u;
@@ -63,7 +66,7 @@ bool SATSolver::Clause::propagate(Literal l) {
     solver.watch_list[l].push_back(shared_from_this());
     // if no new literal is available, the clause must be a unit or a conflict
     if ( solver.get_asigned_value(watch[1]) == LIT_UNASIGNED ) {
-        // assign the unit
+        // is a UNIT, assign the only unsasigned literal
         solver.assign(watch[1],shared_from_this());
         return false; // no conflict
     }
@@ -90,28 +93,17 @@ void SATSolver::Clause::remove() {
         }
         ++it;
     }
-    // remove from subsumption info
-    /*
-    for ( const auto& l : literals ) {
-        auto it = solver.subsumption[l].begin();
-        while ( it != solver.subsumption[l].end() ) {
-            if ( (*it) == shared_from_this() ) {
-                solver.subsumption[l].erase(it);
-                break;
-            }
-            ++it;
-        }
-    }
-    */
+
 }
 
 std::string SATSolver::Clause::print() const {
     // special simbol for empty clause
     if ( literals.empty() ) return "□";
+
     std::ostringstream os;
     auto it = literals.begin();
     os << "{" << *it++;
-    while ( it != literals.end() ) os << "," << *(it++) ;
+    while ( it != literals.end() ) { os << "," << *(it++); }
     os << "}";
     return os.str();
 }
@@ -138,11 +130,9 @@ void SATSolver::Clause::print_justification(std::ostream& os,
 }
 
 void SATSolver::Clause::update_activity() {
-    if ( learned )
+    if ( learned ) // activity is usefull only for learned clause
         activity+=solver.clause_activity_update;
 }
-
-bool SATSolver::Clause::propagate(Literal l);
 
 bool SATSolver::Clause::is_learned() const {
     return learned;

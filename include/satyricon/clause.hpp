@@ -12,17 +12,20 @@ namespace Satyricon {
 /* Clause class
  * A Clause is related to a specific SAT instance.
  * It contein not only the literal vector but also information for
- * efficent analysis of the problem status
+ * efficent analysis of the problem status.
  * enable_shared_from_this allow to use the class like a smart pointer of
- * itself, usefull for managing the wath_list
+ * itself, usefull for managing the watch_list
  */
 class SATSolver::Clause :
     public std::enable_shared_from_this<SATSolver::Clause> { 
-public:
 
+public:
     typedef std::vector<Literal>::iterator iterator;
     typedef std::vector<Literal>::const_iterator const_iterator;
 
+    // activity is used in clauses elimination, it's usefull only for learned
+    // clauses. Every time a clause is used to explain a conflict condition,
+    // it's activity is increased. All the activity are periodically reduced.
     double activity;
     void update_activity();
 
@@ -63,7 +66,7 @@ public:
     void print_justification(std::ostream& os,
             const std::string& prefix = "") const;
 
-    // literals access and iteration
+    // helpfull method for literals access and iteration
     std::vector<Literal>& get_literals();
     const std::vector<Literal>& get_literals() const;
     Literal& at(size_t pos);
@@ -79,7 +82,7 @@ private:
     uint64_t signature;
     SATSolver& solver;
     std::vector<Literal> literals;
-    bool learned;
+    bool learned; // true iff the clause is learned
     Literal watch[2];
     std::shared_ptr<Clause > learned_from[2];
 };
