@@ -11,6 +11,7 @@ uint8_t lit_hash( const Literal& l ) {
 
 SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
         std::shared_ptr<Clause> first, std::shared_ptr<Clause> second) :
+    activity(0.0),
     signature(0),
     solver(s),
     literals(lits),
@@ -114,7 +115,7 @@ void SATSolver::Clause::print_justification(std::ostream& os,
     if ( learned ) {
         // if learned, explain how the clause was learned
         assert_message(learned_from[0] != nullptr && learned_from[1] != nullptr,
-                "learned is nullptr, must be another clause for learned");
+                "learned_from is nullptr, must be another clause");
 
         os << " from resolution of " << learned_from[0]->print() <<
             " and " << learned_from[1]->print() << std::endl;

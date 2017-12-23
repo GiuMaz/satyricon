@@ -23,6 +23,11 @@ public:
     typedef std::vector<Literal>::iterator iterator;
     typedef std::vector<Literal>::const_iterator const_iterator;
 
+    double activity;
+    void update_activity() {
+        activity+=solver.clause_activity_update;
+    }
+
     // disable empy constructor, a clause must refer to a SAT instance
     Clause() = delete;
     Clause(SATSolver& s, std::vector<Literal> lits, bool learn,

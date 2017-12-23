@@ -33,6 +33,8 @@ int main(int argc, char* argv[])
     auto& verbose = parser.make_flag("verbose",
             "print the resolution process step by step.\n"
             "WARNING: can be really expansive",{"v","verbose"});
+    auto& no_preproc = parser.make_flag("no_preprocessing",
+            "disable preprocessing of clause",{"no-preprocessing"});
 
     // parsing argument
     try {
@@ -81,7 +83,7 @@ int main(int argc, char* argv[])
     }
 
     // set option in solver
-    // ...
+    if ( no_preproc ) solver.set_preprocessing(false);
 
     auto satisfiable = solver.solve();
 

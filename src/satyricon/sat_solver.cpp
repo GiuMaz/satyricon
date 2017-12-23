@@ -29,13 +29,43 @@ SATSolver::SATSolver():
     current_level(0),
     log(Utils::LOG_NONE),
     model(),
-    subsumption()
+    subsumption(),
+    enable_preprocessing(true),
+    restart_interval_multiplier(2),
+    restart_threshold(1),
+    clause_activity_update(1.0),
+    clause_decay_factor(1.05)
 {}
 
+void SATSolver::set_preprocessing(bool p) {
+    enable_preprocessing = p;
+}
+
+int SATSolver::next_restart_interval() {
+    if ( luby_next == ( (1<<luby_k) -1) ) {
+        luby_memoization.push_back( 1 << (luby_k-1) );
+        luby_k++;
+    }
+    else{
+        luby_memoization.push_back(
+                luby_memoization[luby_next - (1<< (luby_k-1))] );
+    }
+    luby_next++;
+    return luby_memoization.back();
+}
+
+int SATSolver::new_restart_threshold() {
+    return restart_interval_multiplier * next_restart_interval();
+}
+
 bool SATSolver::solve() {
-    unsigned int conflict_counter = 0;
-    preprocessing();
     log.normal << "begin solve" << endl;
+    unsigned int conflict_counter = 0;
+    int restart_counter = 0;
+
+    if ( enable_preprocessing) preprocessing();
+    restart_threshold = new_restart_threshold();
+
     while ( true ) {
 
         log.verbose << "propagate at level " << current_level << endl;
@@ -48,20 +78,32 @@ bool SATSolver::solve() {
             if ( current_level == 0 ) {
                 log.verbose << "conflict at level 0, build unsat proof\n";
                 build_unsat_proof();
+                cout << "number of restart: " << restart_counter<< endl;
                 return false; // UNSAT
             }
 
             auto backtrack_level  = conflict_analysis();
             backtrack( backtrack_level );
             learn_clause();
+
+            // decay activity
             vsids.decay();
+            clause_activity_decay();
+
         }
         else {
 
             if ( number_of_assigned_variable == number_of_variable ) {
                 log.verbose << "assinged all literals without conflict\n";
                 build_model();
+                cout << "number of restart: " << restart_counter<< endl;
                 return true; // SAT
+            }
+            if ( conflict_counter >= restart_threshold ) {
+                restart_threshold += new_restart_threshold();
+                restart_counter++;
+                log.verbose << "restarting. next restart at " << restart_threshold << endl;
+                backtrack(0);
             }
 
             // otherwise select a new literal
@@ -223,7 +265,8 @@ void SATSolver::build_unsat_proof() {
 
 int SATSolver::conflict_analysis() {
 
-    log.verbose << "learning new clausole from " << conflict_clause->print() << endl;
+    log.verbose << "learning new clausole from " <<
+        conflict_clause->print() << endl;
 
     int count = 0;
     for ( const auto& l : *conflict_clause )
@@ -235,13 +278,19 @@ int SATSolver::conflict_analysis() {
 
         if ( decision_levels[it->atom()] < current_level ) break;
 
-        if (find(conflict_clause->begin(), conflict_clause->end(), !(*it)) != conflict_clause->end()) {
+        if (find(conflict_clause->begin(), conflict_clause->end(),
+                    !(*it)) != conflict_clause->end()) {
+            // resolution process
+
             assert_message( antecedents[ it->atom() ] != nullptr,
                     "Unexpected decision literal");
 
             log.verbose << "\t" << conflict_clause->print() << " | "
                 << antecedents[it->atom()]->print();
             count--;
+
+            // increase activity of antecedent
+            antecedents[ it->atom() ]->update_activity();
 
             std::vector<Literal> new_lit;
             for ( const auto& l : *conflict_clause )
@@ -255,7 +304,9 @@ int SATSolver::conflict_analysis() {
                 if ( decision_levels[l.atom()] == current_level) count++;
             }
             log.verbose << " -> "  << new_lit << endl;
-            auto new_ptr = make_shared<Clause>(*this,new_lit, true, conflict_clause, antecedents[it->atom()]);
+            auto new_ptr = make_shared<Clause>(*this,new_lit, true,
+                    conflict_clause, antecedents[it->atom()]);
+
             conflict_clause = new_ptr;
         }
     }
@@ -280,6 +331,8 @@ bool SATSolver::learn_clause() {
 
     // initialize vsids info
     for ( const auto& l : *conflict_clause ) vsids.update(l);
+    // increase activity of conflict clause
+    conflict_clause->update_activity();
 
     // look for the assertion litteral
     for ( const auto& l : *conflict_clause ) {
@@ -288,6 +341,8 @@ bool SATSolver::learn_clause() {
             break;
         }
     }
+
+    conflict_clause = nullptr; // reset conflict clause
 
     return false; // no conflict
 }
@@ -397,6 +452,18 @@ string SATSolver::string_conterproof() {
     conflict_clause->print_justification(oss);
     return oss.str();
 }
+
+void SATSolver::clause_activity_decay() {
+
+    if ( clause_activity_update > 1e100 ) {
+        for ( auto & c : learned )
+            c->activity/=clause_activity_update;
+        clause_activity_update = 1.0;
+    }
+
+    clause_activity_update*=clause_decay_factor;
+}
+
 
 } // end namespace Satyricon
 

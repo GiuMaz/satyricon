@@ -9,7 +9,7 @@ VSIDS_Info::VSIDS_Info():
     negative(),
     update_value(1.0),
     max_update(std::numeric_limits<double>::max()/100),
-    decay_factor(2.0)
+    decay_factor(1.001)
 {}
 
 void VSIDS_Info::set_size( size_t size ) {

@@ -58,3 +58,4 @@ bool Satyricon::parse_file(SATSolver& solver, istream & is)
     }
     return false; // no conflict
 }
+

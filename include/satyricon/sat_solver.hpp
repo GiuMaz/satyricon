@@ -28,6 +28,8 @@ public:
     std::string string_model();
 
     std::string string_conterproof();
+
+    void set_preprocessing(bool p);
 private:
 
     void build_model();
@@ -65,6 +67,11 @@ private:
     void preprocessing();
     bool subset(const Clause& inner,const Clause& outer);
 
+    // interval before restart
+    int next_restart_interval();
+    int new_restart_threshold();
+
+    // clause collections
     std::vector<std::shared_ptr<Clause> > clauses;
     std::vector<std::shared_ptr<Clause> > learned;
     unsigned int number_of_variable;
@@ -90,6 +97,23 @@ private:
     std::vector<int> model;
 
     SubsumptionMap subsumption;
+
+    bool enable_preprocessing;
+
+    // values for luby sequence, used for restart policy
+    int luby_k    = 1;
+    int luby_next = 1;
+    std::vector<int> luby_memoization {};
+
+    // restarting 
+    unsigned int restart_interval_multiplier;
+    unsigned int restart_threshold;
+
+    // clause deletion policy
+    double clause_activity_update;
+    double clause_decay_factor;
+    void clause_activity_decay();
+
 };
 
 } // end namespace Satyricon
