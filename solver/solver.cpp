@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
     solver.set_clause_decay(decay_clauses_factor);
     solver.set_literal_decay(decay_literal_factor);
 
-    auto satisfiable = solver.solve();
+    bool satisfiable = solver.solve();
 
     auto end_time = chrono::steady_clock::now();
     chrono::duration<double> elapsed = end_time - start;
@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
     if ( print_sat && satisfiable == true )
         cout << "Model: " << endl << solver.string_model() << endl;
     if ( print_unsat && satisfiable == false )
-        cout << "proof: " << endl << solver.string_conterproof();
+        cout << "Proof: " << endl << solver.string_conterproof();
 
     return 0;
 }

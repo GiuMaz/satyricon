@@ -62,15 +62,18 @@ void SATSolver::set_deletion(bool d) {
 }
 
 int SATSolver::next_restart_interval() {
+
     if ( luby_next == ( (1<<luby_k) -1) ) {
         luby_memoization.push_back( 1 << (luby_k-1) );
         luby_k++;
     }
-    else{
+    else {
         luby_memoization.push_back(
                 luby_memoization[luby_next - (1<< (luby_k-1))] );
     }
+
     luby_next++;
+
     return luby_memoization.back();
 }
 
