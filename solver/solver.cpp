@@ -12,6 +12,35 @@
 using namespace std;
 using Utils::ArgumentParser;
 
+// description of program, both for documenation and help message
+std::string program_description =
+"This program can solve propositional logic problems written in conjunctive "
+"normal form. It is possible to specify a file with the problem's constraints "
+"written in DIMACS format.\n"
+"(DIMACS: http://www.satcompetition.org/2009/format-benchmarks2009.html).\n"
+"If no file is specified, the program reads from the standard input, the input "
+"must follow the DIMACS format as previously specified."
+"This solver is based on the CDCL resolution scheme, so after a conflict it "
+"learn a new clause and try to use it to improve the searching process. "
+"This program use the VSIDS heuristic for the selection of new decision "
+"literals based on the 'activity' of a literal. A really similar mechanism "
+"is used for evaluate the activity of a learned clause, and clauses with low "
+"activity are periodically removed from the problem.\n"
+"The program periodically restart the searching process keeping all the "
+"learned information.\n"
+"A preprocessing step is applied to the problem before the resolution, in "
+"which a clause that can be subsumed by a more general one are eliminated from "
+"the formula.\n"
+"It is possible to change and/or disable all this features from the command "
+"line interace, as described in the 'Options' section.\n"
+"If requested, the program can build a proof of the "
+"satisiability/unsatisfiablity results. If the problem is SATISFIABLE, a model "
+"are given, with a possible asignment of all the literals that can satisfy all "
+"the clauses. If the problem is UNSATISFIABLE the program show how is possible "
+"to build the empty clause with a resolution process of the original clauses "
+"of the problem."
+;
+
 /**
  * SAT solver from CLI
  */
@@ -22,8 +51,7 @@ int main(int argc, char* argv[])
     // parsing set up
     ArgumentParser parser(
             "SAT solver for propositional logic",
-            " --- write long description --- "
-            );
+            program_description);
 
     // input file (if not specified, read from stdin
     auto& in = parser.make_positional<string>("input",
