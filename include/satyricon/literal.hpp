@@ -11,9 +11,9 @@ namespace Satyricon {
  * Possible value assigned to a literal
  */
 enum literal_value {
-    LIT_FALSE,
-    LIT_UNASIGNED,
-    LIT_TRUE
+    LIT_FALSE = 0,
+    LIT_UNASIGNED = 1,
+    LIT_TRUE = 2
 };
 
 /**
@@ -60,9 +60,8 @@ std::ostream& operator<<(std::ostream &os, std::vector<Literal> const &v);
 
 namespace std {
 
-template <>
-
 // support hash class, usefull for unordered_map (hash map)
+template <>
 struct hash<Satyricon::Literal>
 {
     std::size_t operator()(const Satyricon::Literal& k) const {

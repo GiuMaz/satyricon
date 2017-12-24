@@ -37,10 +37,11 @@ SATSolver::SATSolver():
     restart_interval_multiplier(10),
     restart_threshold(1),
     clause_activity_update(1.0),
-    clause_decay_factor(1.001)
+    clause_decay_factor(1.0 / 0.999)
 {}
 
-void SATSolver::print_status(unsigned int conflict, unsigned int restart, unsigned int learn_limit) {
+void SATSolver::print_status(unsigned int conflict, unsigned int restart,
+        unsigned int learn_limit) {
     log.normal << "conflict: " << setw(7) << conflict;
     if ( enable_restart )
         log.normal << ", restart: " << setw(7) <<  restart;
@@ -137,7 +138,8 @@ bool SATSolver::solve() {
             if ( enable_restart && conflict_counter >= restart_threshold ) {
                 restart_threshold += new_restart_threshold();
                 restart_counter++;
-                log.verbose << "restarting. next restart at " << restart_threshold << endl;
+                log.verbose << "restarting. next restart at " <<
+                    restart_threshold << endl;
                 backtrack(0);
             }
 
@@ -179,14 +181,12 @@ void SATSolver::set_log( Utils::Log l) {
 }
 
 literal_value SATSolver::get_asigned_value(const Literal & l) {
-    switch (values[l.atom()]) {
-        case LIT_TRUE:
-            return l.is_negated() ? LIT_FALSE : LIT_TRUE;
-        case LIT_FALSE:
-            return l.is_negated() ? LIT_TRUE  : LIT_FALSE;
-        default:
-            return LIT_UNASIGNED;
-    }
+    if ( l.is_negated() )
+        // LIT_TRUE = 2, LIT_UNASIGNED = 1, LIT_FALSE = 2
+        // so for the opposite result we can do 2 - value
+        return (literal_value)(LIT_TRUE - values[l.atom()]);
+    else
+        return values[l.atom()];
 }
 
 bool SATSolver::assign(Literal l, shared_ptr<SATSolver::Clause> antecedent) {
@@ -537,8 +537,9 @@ void SATSolver::reduce_learned() {
     learned.resize( j );
 }
 
-void SATSolver::set_clause_decay(double cd_factor) {
-    clause_decay_factor = cd_factor;
+void SATSolver::set_clause_decay(double decay) {
+    assert_message( decay > 0.0 && decay <= 1.0, "must be 0.0 < decay ≤ 0.1 ");
+    clause_decay_factor = 1.0 / decay;
 }
 
 void SATSolver::set_literal_decay(double ld_factor) {

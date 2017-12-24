@@ -25,6 +25,8 @@ SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
     watch[0] = literals.front();
     watch[1] = literals.back();
 
+    if ( learn ) return;  // nothing more to do for learned cluases
+
     // compute the signature, used for smart subsumption elimination
     for ( const auto& l : literals )
         signature|=(1 << lit_hash(l));
@@ -35,7 +37,7 @@ void SATSolver::Clause::initialize_structure() {
     solver.watch_list[watch[0]].push_back(shared_from_this());
     solver.watch_list[watch[1]].push_back(shared_from_this());
 
-    // preprocessing with subsumption
+    // preprocessing with subsumption, only for not learned
     for ( const auto& l : literals )
         solver.subsumption[l].push_back(shared_from_this());
 }
@@ -94,6 +96,19 @@ void SATSolver::Clause::remove() {
         ++it;
     }
 
+    if ( learned ) return; // nothing more to do for learned
+
+    // remove from subsumption info
+    for ( const auto& l : literals ) {
+        auto it = solver.subsumption[l].begin();
+        while ( it != solver.subsumption[l].end() ) {
+            if ( (*it) == shared_from_this() ) {
+                solver.subsumption[l].erase(it);
+                break;
+            }
+            ++it;
+        }
+    }
 }
 
 std::string SATSolver::Clause::print() const {

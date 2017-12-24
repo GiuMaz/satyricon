@@ -8,8 +8,7 @@ VSIDS_Info::VSIDS_Info():
     positive(),
     negative(),
     update_value(1.0),
-    max_update(std::numeric_limits<double>::max()/100),
-    decay_factor(1.001)
+    decay_factor( 1.0 / 0.95)
 {}
 
 void VSIDS_Info::set_size( size_t size ) {
@@ -18,7 +17,8 @@ void VSIDS_Info::set_size( size_t size ) {
 }
 
 void VSIDS_Info::set_parameter(double decay) {
-    decay_factor = decay;
+    assert_message( decay > 0.0 && decay <= 1.0, "must be 0.0 < decay ≤ 0.1 ");
+    decay_factor = 1.0 / decay;
 }
 
 void VSIDS_Info::renormalize_big_number() {
@@ -30,9 +30,8 @@ void VSIDS_Info::renormalize_big_number() {
 }
 
 void VSIDS_Info::decay() {
-    if (update_value > max_update )
+    if ( update_value > 1e100 )
         renormalize_big_number();
-
     update_value*=decay_factor;
 }
 

@@ -26,7 +26,8 @@ int main(int argc, char* argv[])
             );
 
     // input file (if not specified, read from stdin
-    auto& in = parser.make_positional<string>("input","input file");
+    auto& in = parser.make_positional<string>("input",
+            "input file ( in DIMACS format )" );
 
     // print help
     auto& help = parser.make_flag("help",
@@ -53,12 +54,14 @@ int main(int argc, char* argv[])
             "disable deletion of learned clauses",{"no-deletion"});
 
     // decay policy
-    double decay_literal_factor = 1.05, decay_clauses_factor = 1.001;
+    double decay_literal_factor = 0.95, decay_clauses_factor = 0.999;
     auto& clause_decay = parser.make_option<double>("clause decay",
-            "decay factor for activity of clauses (default " +
+            "decay factor for activity of clauses.\nSould be "
+            "0 < c-decay ≤ 1.0 (default " +
             std::to_string(decay_clauses_factor)+")",{"c-decay"});
     auto& literal_decay = parser.make_option<double>("literal decay",
-            "decay factor for activity of literal (defualt "+
+            "decay factor for activity of literal.\nShould be "
+            "0 < l-decay ≤ 1.0 (defualt "+
             std::to_string(decay_literal_factor)+")",{"l-decay"});
 
     // restarting policy
@@ -86,8 +89,22 @@ int main(int argc, char* argv[])
     if ( in ) freopen( in.get_value().c_str(), "r", stdin);
 
     // decay values
-    if ( clause_decay )  decay_clauses_factor = clause_decay.get_value();
-    if ( literal_decay ) decay_literal_factor = literal_decay.get_value();
+    if ( clause_decay ) {
+        double decay = clause_decay.get_value();
+        if ( decay <= 0.0 || decay > 1.0 ) {
+            cout << "ERROR: should be 0 < c-decay ≤ 1.0\n" << parser;
+            exit(1);
+        }
+        decay_clauses_factor = decay;
+    }
+    if ( literal_decay ) {
+        double decay = literal_decay.get_value();
+        if ( decay <= 0.0 || decay > 1.0 ) {
+            cout << "ERROR: should be 0 < l-decay ≤ 1.0\n" << parser;
+            exit(1);
+        }
+        decay_literal_factor = decay;
+    }
 
     // restarting multiplier value
     if ( restart_mult ) restart_interval_multiplier = restart_mult.get_value();

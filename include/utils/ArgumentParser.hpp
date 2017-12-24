@@ -66,10 +66,7 @@ public:
 protected:
     std::string argument_message(const std::string& opt, size_t start, size_t end) {
         std::string message = wrap_string(get_description(),start,end);
-        if (opt.size() + 4 > start)
-            return "    " + opt + "\n" + message;
-        else
-            return message.replace(4, opt.size(), opt);
+        return "    " + opt + "\n" + message;
     }
 
 private:
@@ -90,12 +87,13 @@ public:
 
     std::vector<std::string> flags;
     const std::string get_message() {
-        std::string opt;
+        std::string opt("\e[1m");
         for (auto o : flags) {
             if (o.size() == 1) opt += "-"  + o + " ";
             else               opt += "--" + o + " ";
         }
-        return this->argument_message(opt,28,80);
+        opt+="\e[0m";
+        return this->argument_message(opt,8,80);
     }
 };
 
@@ -119,7 +117,7 @@ class TypedArgObj : public ValueArgObj {
 public:
 
     TypedArgObj(const std::string& _name, const std::string& _description) :
-        ValueArgObj(_name,_description) {}
+        ValueArgObj(_name,_description), value() {}
 
     const T& get_value() { return value; }
     void set_value( const T& v) { value = v; }
@@ -157,7 +155,7 @@ public:
     void set_position(size_t p ) { pos = p; };
 
     const std::string get_message() {
-        return this->argument_message("<" + this->get_name() + "> ",28,80);
+        return this->argument_message("\e[1m<" + this->get_name() + ">\e[0m",8,80);
     }
 
 private:
@@ -178,13 +176,13 @@ public:
     std::vector<std::string> opts;
 
     const std::string get_message() {
-        std::string opt;
+        std::string opt("\e[1m");
         for (auto o : opts) {
             if (o.size() == 1) opt += "-"  + o + " ";
             else               opt += "--" + o + " ";
         }
-        opt += "<" + this->get_name() + "> ";
-        return this->argument_message(opt,28,80);
+        opt += "<" + this->get_name() + ">\e[0m";
+        return this->argument_message(opt,8,80);
     }
 };
 
@@ -199,7 +197,17 @@ class ArgumentParser {
 
 public:
     ArgumentParser( const std::string& _short, const std::string& _long) :
-        short_text(_short), long_text(_long) {}
+        used_name(),
+        used_identifier(),
+        positionals(),
+        options(),
+        flags(),
+        option_mapping(),
+        flag_mapping(),
+        program_name(),
+        short_text(_short),
+        long_text(_long)
+    {}
 
     ~ArgumentParser();
 
