@@ -239,7 +239,7 @@ int main(int argc, char* argv[])
     if ( print_sat && satisfiable == true )
         cout << "Model: " << endl << solver.string_model() << endl;
     if ( print_unsat && satisfiable == false )
-        cout << "Proof: " << endl << solver.string_conterproof();
+        cout << "Proof: " << endl << solver.unsat_proof();
 
     return 0;
 }
