@@ -35,6 +35,8 @@ public:
     void set_preprocessing(bool p);
     void set_restart(bool p);
     void set_deletion(bool p);
+
+    void set_restarting_multiplier(unsigned int b);
 private:
 
 void print_status(unsigned int conflict, unsigned int restart,

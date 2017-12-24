@@ -54,12 +54,18 @@ int main(int argc, char* argv[])
 
     // decay policy
     double decay_literal_factor = 1.05, decay_clauses_factor = 1.001;
-    auto& clause_decay = parser.make_option<float>("clause decay",
-            "decay factor for activity of clauses (default: " +
+    auto& clause_decay = parser.make_option<double>("clause decay",
+            "decay factor for activity of clauses (default " +
             std::to_string(decay_clauses_factor)+")",{"c-decay"});
-    auto& literal_decay = parser.make_option<float>("literal decay",
-            "decay factor for activity of literal (defualt: "+
+    auto& literal_decay = parser.make_option<double>("literal decay",
+            "decay factor for activity of literal (defualt "+
             std::to_string(decay_literal_factor)+")",{"l-decay"});
+
+    // restarting policy
+    unsigned int restart_interval_multiplier = 10;
+    auto& restart_mult = parser.make_option<int>("restart multiplier",
+            "restarting sequence multiplicator (default "+
+            to_string(restart_interval_multiplier)+")", {"b","restart-mult"});
 
     // parsing argument
     try {
@@ -82,6 +88,9 @@ int main(int argc, char* argv[])
     // decay values
     if ( clause_decay )  decay_clauses_factor = clause_decay.get_value();
     if ( literal_decay ) decay_literal_factor = literal_decay.get_value();
+
+    // restarting multiplier value
+    if ( restart_mult ) restart_interval_multiplier = restart_mult.get_value();
 
     // print proof
     bool print_sat   = print_sat_proof   || print_proof;
@@ -129,6 +138,9 @@ int main(int argc, char* argv[])
     // decaying factor
     solver.set_clause_decay(decay_clauses_factor);
     solver.set_literal_decay(decay_literal_factor);
+
+    // restarting policy
+    solver.set_restarting_multiplier(restart_interval_multiplier);
 
     bool satisfiable = solver.solve();
 

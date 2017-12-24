@@ -49,6 +49,10 @@ void SATSolver::print_status(unsigned int conflict, unsigned int restart, unsign
     log.normal << ", learned: " << setw(7) <<  learned.size() << endl;
 }
 
+void SATSolver::set_restarting_multiplier(unsigned int b) {
+    restart_interval_multiplier = b;
+}
+
 void SATSolver::set_preprocessing(bool p) {
     enable_preprocessing = p;
 }
