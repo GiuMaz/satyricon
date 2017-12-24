@@ -37,8 +37,10 @@ public:
     void set_deletion(bool p);
 
     void set_restarting_multiplier(unsigned int b);
-private:
 
+    void set_learning_multiplier( double value );
+    void set_learning_increase( double value );
+private:
 void print_status(unsigned int conflict, unsigned int restart,
         unsigned int learn_limit);
 
@@ -127,6 +129,9 @@ void print_status(unsigned int conflict, unsigned int restart,
     double clause_decay_factor;
     void clause_activity_decay();
 
+    // clause deletion policy
+    double initial_learn_mult;
+    double percentual_learn_increase;
 };
 
 } // end namespace Satyricon

@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
 
     // input file (if not specified, read from stdin
     auto& in = parser.make_positional<string>("input",
-            "input file ( in DIMACS format )" );
+            "input file (in DIMACS format). If not specified, use stdin" );
 
     // print help
     auto& help = parser.make_flag("help",
@@ -70,6 +70,18 @@ int main(int argc, char* argv[])
             "restarting sequence multiplicator (default "+
             to_string(restart_interval_multiplier)+")", {"b","restart-mult"});
 
+    // clause deletion policy
+    double initial_learn_mult = 2.0, percentual_learn_increase = 50.0;
+    auto& learn_mult = parser.make_option<double>("learn multiplier",
+            "initial learn limit, is a multiple of the clauses in "
+            " the formula (default "+ to_string(initial_learn_mult)+"x)",
+            {"l","learn-mult"});
+    auto& learn_increase = parser.make_option<double>("learn increase",
+            "when the learn limit is reached, some learned clauses are "
+            "eliminated and the learn limit is increased by this percentage "
+            "(default "+ to_string(percentual_learn_increase)+"%)",
+            {"i","learn-increase"});
+
     // parsing argument
     try {
         parser.parseCLI(argc,argv);
@@ -107,7 +119,29 @@ int main(int argc, char* argv[])
     }
 
     // restarting multiplier value
-    if ( restart_mult ) restart_interval_multiplier = restart_mult.get_value();
+    if ( restart_mult ) { 
+        if ( restart_mult.get_value() < 1.0 ) {
+            cout << "ERROR: should be restart-mult ≥ 1.0\n" << parser;
+            exit(1);
+        }
+        restart_interval_multiplier = restart_mult.get_value();
+    }
+
+    // clause deletion
+    if (  learn_mult ) {
+        if ( learn_mult.get_value() <= 0.0 ) {
+            cout << "ERROR: should be learn-mult > 0.0\n" << parser;
+            exit(1);
+        }
+        initial_learn_mult = learn_mult.get_value();
+    }
+    if (  learn_increase ) {
+        if ( learn_increase.get_value() < 0.0 ) {
+            cout << "ERROR: should be learn-mult ≥ 0.0\n" << parser;
+            exit(1);
+        }
+        percentual_learn_increase = learn_increase.get_value();
+    }
 
     // print proof
     bool print_sat   = print_sat_proof   || print_proof;
@@ -156,16 +190,23 @@ int main(int argc, char* argv[])
     solver.set_clause_decay(decay_clauses_factor);
     solver.set_literal_decay(decay_literal_factor);
 
+    // clause deletion
+    solver.set_learning_multiplier( initial_learn_mult );
+    solver.set_learning_increase( percentual_learn_increase );
+
     // restarting policy
     solver.set_restarting_multiplier(restart_interval_multiplier);
 
+    // solve the formula
     bool satisfiable = solver.solve();
 
+    // print exec time
     auto end_time = chrono::steady_clock::now();
     chrono::duration<double> elapsed = end_time - start;
     log.normal << "completed in: " << fixed << setprecision(2) <<
         elapsed.count() << "s\n";
 
+    // print result
     log.normal << (satisfiable ? "SATISFIABLE" : "UNSATISFIABLE") << endl;
     if ( print_sat && satisfiable == true )
         cout << "Model: " << endl << solver.string_model() << endl;

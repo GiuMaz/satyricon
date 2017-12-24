@@ -37,7 +37,9 @@ SATSolver::SATSolver():
     restart_interval_multiplier(10),
     restart_threshold(1),
     clause_activity_update(1.0),
-    clause_decay_factor(1.0 / 0.999)
+    clause_decay_factor(1.0 / 0.999),
+    initial_learn_mult (2.0),
+    percentual_learn_increase(50.0)
 {}
 
 void SATSolver::print_status(unsigned int conflict, unsigned int restart,
@@ -92,7 +94,7 @@ bool SATSolver::solve() {
     int restart_counter = 0;
 
     // maximum number of learned clause
-    unsigned int learn_limit = clauses.size()*2;
+    unsigned int learn_limit = clauses.size()*initial_learn_mult;
 
     if ( enable_preprocessing) preprocessing();
     restart_threshold = new_restart_threshold();
@@ -131,7 +133,8 @@ bool SATSolver::solve() {
             }
 
             if ( enable_deletion && learned.size() >= learn_limit ) {
-                learn_limit+= (learn_limit/2); // increase the learning limit
+                // increase the learning limit
+                learn_limit += (learn_limit*percentual_learn_increase)/100.0;
                 reduce_learned(); // remove low activity clause
             }
 
@@ -544,6 +547,14 @@ void SATSolver::set_clause_decay(double decay) {
 
 void SATSolver::set_literal_decay(double ld_factor) {
     vsids.set_parameter(ld_factor);
+}
+
+void SATSolver::set_learning_multiplier( double value ) {
+    initial_learn_mult = value;
+}
+
+void SATSolver::set_learning_increase( double value ) {
+    percentual_learn_increase = value;
 }
 
 } // end namespace Satyricon
