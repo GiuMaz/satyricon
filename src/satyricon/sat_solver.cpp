@@ -244,8 +244,75 @@ bool SATSolver::propagation() {
     return false; // no conflict
 }
 
-void SATSolver::build_unsat_proof() {
+int SATSolver::conflict_analysis() {
+    log.verbose << "learning new clausole from " <<
+        conflict_clause->print() << endl;
 
+    // count how many variables are assigned on the current level.
+    int this_level = 0;
+    for ( const auto& l : *conflict_clause )
+        if ( decision_levels[l.atom()] == current_level )
+            ++this_level;
+
+    conflict_clause->update_activity();
+
+    // build the conflict clause
+    for(auto it = trial.rbegin(); it != trial.rend() && this_level >= 2; ++it) {
+
+        // search for the literal with inverse polarity, skip if missing
+        if (find(conflict_clause->begin(), conflict_clause->end(),
+                    !(*it)) == conflict_clause->end())
+            continue; // nothing to resolve
+
+        // resolution process
+        log.verbose << "\tresolve " << conflict_clause->print() <<
+            " and " << antecedents[it->atom()]->print();
+
+        // decrease the counter, a literal of the current level is removed
+        this_level--;
+
+        // increase activity of antecedent
+        antecedents[ it->atom() ]->update_activity();
+
+        std::vector<Literal> new_lit; // literals of the new clause
+        // put everything except the resolved literal
+        for ( const auto& l : *conflict_clause )
+            if ( l != !(*it) ) new_lit.push_back(l);
+
+        for ( auto l : *(antecedents[ it->atom() ]) ) {
+            if (l == *it) continue; // no resolved literal
+            if (find(new_lit.begin(),new_lit.end(),l) != new_lit.end())
+                continue; // no duplicates
+            // add all the other
+            new_lit.push_back(l);
+            // if this is also decided at this level, increase the counter
+            if ( decision_levels[l.atom()] == current_level) this_level++;
+        }
+        log.verbose << " -> "  << new_lit << endl;
+
+        // build the learned clause
+        auto new_ptr = make_shared<Clause>(*this,new_lit, true,
+                conflict_clause, antecedents[it->atom()]);
+
+        conflict_clause = new_ptr;
+    }
+
+    // find the backjump level, is the manimum level for whic the learned
+    // clause is an assertion clause
+    int backjump_level = 0;
+    for ( const auto& i : *conflict_clause ) {
+        // no current level, only previous level for backtrack
+        if ( decision_levels[i.atom()] == current_level ) continue;
+        // keep the maximum
+        backjump_level = max(backjump_level,decision_levels[i.atom()]);
+    }
+
+    return backjump_level;
+}
+
+void SATSolver::build_unsat_proof() {
+    // this process is really similar to the analysis of conflict, but the
+    // process stop when only when the empty clause is reached
     for( auto it = trial.rbegin(); it != trial.rend(); ++it) {
 
         if (find(conflict_clause->begin(), conflict_clause->end(),
@@ -274,80 +341,23 @@ void SATSolver::build_unsat_proof() {
     }
 }
 
-int SATSolver::conflict_analysis() {
-
-    log.verbose << "learning new clausole from " <<
-        conflict_clause->print() << endl;
-
-    int count = 0;
-    for ( const auto& l : *conflict_clause )
-        if ( decision_levels[l.atom()] == current_level )
-            ++count;
-
-    // build the conflict clause
-    for( auto it = trial.rbegin(); it != trial.rend() && count >= 2; ++it) {
-
-        if ( decision_levels[it->atom()] < current_level ) break;
-
-        if (find(conflict_clause->begin(), conflict_clause->end(),
-                    !(*it)) != conflict_clause->end()) {
-            // resolution process
-
-            assert_message( antecedents[ it->atom() ] != nullptr,
-                    "Unexpected decision literal");
-
-            log.verbose << "\t" << conflict_clause->print() << " | "
-                << antecedents[it->atom()]->print();
-            count--;
-
-            // increase activity of antecedent
-            antecedents[ it->atom() ]->update_activity();
-
-            std::vector<Literal> new_lit;
-            for ( const auto& l : *conflict_clause )
-                if ( l != !(*it) ) new_lit.push_back(l);
-
-            for ( auto l : *(antecedents[ it->atom() ]) ) {
-                if (l == *it) continue;
-                if (find(new_lit.begin(),new_lit.end(),l) != new_lit.end())
-                    continue;
-                new_lit.push_back(l);
-                if ( decision_levels[l.atom()] == current_level) count++;
-            }
-            log.verbose << " -> "  << new_lit << endl;
-            auto new_ptr = make_shared<Clause>(*this,new_lit, true,
-                    conflict_clause, antecedents[it->atom()]);
-
-            conflict_clause = new_ptr;
-        }
-    }
-
-    // find the backjump level, is the manimum level for witch the learned
-    // clause is an assertion clause
-    int backjump_level = 0;
-    for ( const auto& i : *conflict_clause ) {
-        if ( decision_levels[i.atom()] == current_level ) continue;
-        backjump_level = max(backjump_level,decision_levels[i.atom()]);
-    }
-
-    return backjump_level;
-}
-
 bool SATSolver::learn_clause() {
 
-    // add insert the new clause
+    // learn the conflict clause
     assert_message( conflict_clause != nullptr, "no conflict clause");
     learned.push_back(conflict_clause);
     learned.back()->initialize_structure();
 
-    // initialize vsids info
+    // increase activity for all the literals inside the new clause
     for ( const auto& l : *conflict_clause ) vsids.update(l);
+
     // increase activity of conflict clause
     conflict_clause->update_activity();
 
-    // look for the assertion litteral
+    // search the assertion literal (the only unsasigned literal after backjump)
     for ( const auto& l : *conflict_clause ) {
         if ( get_asigned_value(l) == LIT_UNASIGNED ) {
+            // assign the assertion literal, the conflict clause is a unit
             assign( l, learned.back());
             break;
         }
@@ -370,15 +380,16 @@ bool SATSolver::add_clause( const std::vector<Literal>& c ) {
     // an empty clause is a conflict
     if ( new_c.size() == 0 ) return true; // conflict
 
-    // add insert the new clause
+    // add the new clause to the problem
     clauses.push_back(make_shared<SATSolver::Clause>(*this, new_c,false));
     clauses.back()->initialize_structure();
 
     // initialize vsids info
     for ( const auto& l : new_c ) vsids.update(l);
 
-    // is unit
     if ( new_c.size() == 1 ) {
+        // is unit, assign the value immediately, it can result in a conflict
+        // if two opposite literals appears in the original formula
         bool conflict = assign( new_c[0], clauses.back());
         if ( conflict ) return true; // conflict
     }
@@ -387,24 +398,26 @@ bool SATSolver::add_clause( const std::vector<Literal>& c ) {
 }
 
 void SATSolver::backtrack(int backtrack_level) {
-
     assert_message(backtrack_level <= current_level,
             "impossible to backtrack forward");
+    log.verbose << "bactrack to level " << backtrack_level <<
+        " from " << current_level << endl;
 
-    log.verbose << "bactrack to level " << backtrack_level << " from " << current_level << endl;
-    for ( int i = trial.size()-1;
-            i >= 0 && decision_levels[trial[i].atom()] > backtrack_level; --i) {
+    for ( int i = trial.size()-1; i >= 0; --i) {
+        // end if the required level is reached
+        if (decision_levels[trial[i].atom()] <= backtrack_level) break;
+
+        // otherwise keep unasigning the assigned value
         log.verbose << "\tunassign " << trial[i] << endl;
-
         values[trial[i].atom()] = LIT_UNASIGNED;
         decision_levels[trial[i].atom()] = -1;
         antecedents[trial[i].atom()] = nullptr;
         number_of_assigned_variable--;
 
+        // remove from the trial
         trial.pop_back();
-
     }
-    current_level = backtrack_level;
+    current_level = backtrack_level; // reset the current level
 }
 
 bool SATSolver::subset( const Clause& inner,const Clause& outer) {
@@ -429,8 +442,8 @@ void SATSolver::preprocessing() {
 
         if ( to_remove.find(c) != to_remove.end() ) continue; // already removed
 
-        // find the literal with the minimum neighbourn, it's the cheaper
-        // to iterate.
+        // find the literal with the minimum number of neighbourns, it's the
+        // cheaper to iterate.
         auto min_lit = min_element(c->begin(),c->end(),
                 [&](const Literal& i, const Literal& j)
                 {return subsumption[i].size() < subsumption[j].size();});
@@ -454,18 +467,18 @@ void SATSolver::preprocessing() {
         if ( to_remove.find(c) == to_remove.end() )
             new_clauses.push_back(c);
     swap(clauses,new_clauses);
-
 }
 
 string SATSolver::unsat_proof() {
     ostringstream oss;
-    // print the justification for the conflict clause
+    // the unsat proof is the the justification for the empty clause
     conflict_clause->print_justification(oss);
     return oss.str();
 }
 
 void SATSolver::clause_activity_decay() {
 
+    // if big value is reached, a normalization is required
     if ( clause_activity_update > 1e100 ) {
         for ( auto & c : learned )
             c->activity/=clause_activity_update;
@@ -476,17 +489,13 @@ void SATSolver::clause_activity_decay() {
 }
 
 void SATSolver::reduce_learned() {
-    size_t i = 0, j = 0;
+    size_t i = 0, j = 0; // use this indices to compact the vector
     // sort learned clause by activity (in ascending order)
     sort(learned.begin(), learned.end(),
             [&](const ClausePtr& l, const ClausePtr& r)
                 { return l->activity < r->activity; });
 
-    log.verbose << "sorted, from " << learned.front()->activity <<
-        " to " << learned.back()->activity << " of " <<
-        learned.size() << " clauses"<< endl;
-
-    // delete the first half of the clause, exept clauses that are
+    // delete the first half of the clauses, exept clauses that are
     // the antecedent of some assigned literal
     set<ClausePtr > not_removable;
     for ( const auto& c : antecedents ) 
@@ -496,18 +505,14 @@ void SATSolver::reduce_learned() {
     // remove the first half
     for ( ; i < learned.size()/2 ; ++i ) {
         if ( not_removable.find(learned[i]) != not_removable.end() )
-            learned[j++] = learned[i];
+            learned[j++] = learned[i]; // keep the justification
         else
-            learned[i]->remove();
+            learned[i]->remove(); // remove from watch list
     }
 
-    // move the second half in the beginning
-    for (; i < learned.size(); ++i)
-        learned[j++] = learned[i];
-
-    log.verbose << "after elimination, from " << learned.front()->activity <<
-        " to " << learned.back()->activity << " of " <<
-        learned.size() << " clauses"<< endl;
+    // move the second half in the first half (this effectively delete the
+    // low activity clauses)
+    for (; i < learned.size(); ++i) learned[j++] = learned[i];
 
     // keep only the most active clause
     learned.resize( j );
