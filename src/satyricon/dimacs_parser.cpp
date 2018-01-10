@@ -33,29 +33,33 @@ bool Satyricon::parse_file(SATSolver& solver, istream & is)
 
     int read_clausole = 0;
     // read clausoles
+
+    std::vector<Literal> c;
+    int value;
+
     while (getline(is, line) && read_clausole < number_of_clausole ) {
         if ( line.size() == 0 || line[0] == 'c') continue;
 
-        std::vector<Literal> c;
         std::istringstream iss(line);
-        int value;
 
         while( !iss.eof() ) {
             if ( !(iss >> value) )
                 throw domain_error("invalid simbol on clausole " + line);
-
-            if (value == 0) break;
-
             if( value < -number_of_variable || value > number_of_variable)
-                throw domain_error(string("invalid variable ")
-                        + to_string(value));
+                throw domain_error(string("invalid variable ")+to_string(value));
 
-            c.push_back( Literal(abs(value)-1, value < 0) );
+            if (value == 0) {
+                read_clausole++;
+                bool conflict = solver.add_clause(c);
+                c.clear();
+                if ( conflict ) return true; // found a conflict
+            }
+            else {
+                c.push_back( Literal(abs(value)-1, value < 0) );
+            }
         }
-        read_clausole++;
-        bool conflict = solver.add_clause(c);
-        if ( conflict ) return true; // found a conflict
     }
+
     return false; // no conflict
 }
 
