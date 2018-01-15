@@ -1,4 +1,5 @@
 #include <iostream>
+#include <csignal>
 #include <iomanip>
 #include <exception>
 #include <cstdlib>
@@ -41,11 +42,30 @@ std::string program_description =
 "of the problem."
 ;
 
+std::chrono::time_point<std::chrono::steady_clock> start;
+
+void signalHandler( int signum ) {
+   cout << "Interrupt signal (" << signum << ") received.\n";
+
+    auto end_time = chrono::steady_clock::now();
+    chrono::duration<double> elapsed = end_time - start;
+    cout << "stopped after: " << fixed << setprecision(2) <<
+        elapsed.count() << "s\n";
+
+   cout << "UNKOWN\n";
+   exit(1);  
+}
+
 /**
  * SAT solver from CLI
  */
 int main(int argc, char* argv[])
 {
+    // SIGNAL HANDLING
+    signal(SIGINT, signalHandler); 
+    signal(SIGTERM, signalHandler); 
+    signal(SIGKILL, signalHandler); 
+
     // ARGUMENT PARSING
 
     // parsing set up
@@ -183,7 +203,7 @@ int main(int argc, char* argv[])
     Utils::Log log(verbose ? Utils::LOG_VERBOSE : Utils::LOG_NORMAL);
     solver.set_log(log);
 
-    auto start = chrono::steady_clock::now();
+    start = chrono::steady_clock::now();
 
     // parsing file
     try {
