@@ -77,6 +77,7 @@ public:
     iterator begin();
     const_iterator end() const;
     iterator end();
+    Literal get_watch(int i) { return watch[i]; }
 
 private:
     uint64_t signature;

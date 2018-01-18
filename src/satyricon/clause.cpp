@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iostream>
 #include "assert_message.hpp"
 #include "clause.hpp"
 
@@ -23,7 +24,10 @@ SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
 
     // fix the watch literal
     watch[0] = literals.front();
-    watch[1] = literals.back();
+    if ( literals.size() > 1 )
+        watch[1] = literals[1];
+    else
+        watch[1] = literals.front();
 
     if ( learn ) return;  // nothing more to do for learned cluases
 
@@ -43,9 +47,12 @@ void SATSolver::Clause::initialize_structure() {
 }
 
 bool SATSolver::Clause::propagate(Literal l) {
-    // make sure that the problematic literal is in watch[0]
-    if (solver.get_asigned_value(watch[1]) == LIT_FALSE)
+    if ( l == watch[1] )
         std::swap(watch[0],watch[1]);
+
+    // make sure that the problematic literal is in watch[0]
+    //if (solver.get_asigned_value(watch[1]) == LIT_FALSE)
+    //    std::swap(watch[0],watch[1]);
 
     // if the clause is already solved, nothing need to be moved
     if (solver.get_asigned_value(watch[1]) == LIT_TRUE) {

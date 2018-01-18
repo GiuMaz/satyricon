@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <csignal>
 #include <iomanip>
 #include <exception>
@@ -52,7 +53,7 @@ void signalHandler( int signum ) {
     cout << "stopped after: " << fixed << setprecision(2) <<
         elapsed.count() << "s\n";
 
-   cout << "UNKOWN\n";
+   cout << "UNKNOWN\n";
    exit(1);  
 }
 
@@ -64,7 +65,6 @@ int main(int argc, char* argv[])
     // SIGNAL HANDLING
     signal(SIGINT, signalHandler); 
     signal(SIGTERM, signalHandler); 
-    signal(SIGKILL, signalHandler); 
 
     // ARGUMENT PARSING
 
@@ -146,7 +146,18 @@ int main(int argc, char* argv[])
     }
 
     // redirect input file
-    if ( in ) freopen( in.get_value().c_str(), "r", stdin);
+    ifstream ifstr;
+    istream is(0);
+    if ( in ) {
+        ifstr.open(in.get_value());
+        if ( ! ifstr.good() ) {
+            cout << "ERROR: file " << in.get_value() << " doesn't exist\n";
+            exit(0);
+        }
+        is.rdbuf(ifstr.rdbuf());
+    }
+    else
+        is.rdbuf(cin.rdbuf());
 
     // decay values
     if ( clause_decay ) {
@@ -207,7 +218,7 @@ int main(int argc, char* argv[])
 
     // parsing file
     try {
-        bool conflict = Satyricon::parse_file(solver,cin);
+        bool conflict = Satyricon::parse_file(solver,is);
 
         // get initilization time
         auto init_time = chrono::steady_clock::now();
@@ -257,9 +268,9 @@ int main(int argc, char* argv[])
     // print result
     log.normal << (satisfiable ? "SATISFIABLE" : "UNSATISFIABLE") << endl;
     if ( print_sat && satisfiable == true )
-        cout << "Model: " << endl << solver.string_model() << endl;
+        log.normal << "Model: " << endl << solver.string_model() << endl;
     if ( print_unsat && satisfiable == false )
-        cout << "Proof: " << endl << solver.unsat_proof();
+        log.normal << "Proof: " << endl << solver.unsat_proof();
 
     return 0;
 }

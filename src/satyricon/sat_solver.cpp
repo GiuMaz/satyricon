@@ -61,6 +61,7 @@ bool SATSolver::solve() {
         log.verbose << "propagate at level " << current_level << endl;
         // propagate assingment effect
         bool conflict = propagation();
+
         if ( conflict ) {
 
             conflict_counter++;
@@ -78,7 +79,9 @@ bool SATSolver::solve() {
             }
 
             // otherwise, analize the conflict and backtrack
+
             auto backtrack_level  = conflict_analysis();
+
             backtrack( backtrack_level );
             learn_clause(); // learn the conflcit clause
 
@@ -136,8 +139,6 @@ void SATSolver::print_status(unsigned int conflict, unsigned int restart,
 }
 
 int SATSolver::next_restart_interval() {
-    // TODO: create a luby utility class
-
     if ( luby_next == ( (1<<luby_k) -1) ) {
         luby_memoization.push_back( 1 << (luby_k-1) );
         luby_k++;
@@ -234,8 +235,10 @@ bool SATSolver::propagation() {
 
             // initialize the conflict clause
             conflict_clause = (*it);
-            // reset the other literal to move
-            copy(it, to_move.end(), back_inserter(watch_list[failed]));
+
+            // reset the other literal to move (it is already set by propagate)
+            copy(++it, to_move.end(), back_inserter(watch_list[failed]));
+
             // clear the propagation
             queue<Literal>().swap(propagation_queue);
             return true; // conflict
@@ -288,8 +291,14 @@ int SATSolver::conflict_analysis() {
             // if this is also decided at this level, increase the counter
             if ( decision_levels[l.atom()] == current_level) this_level++;
         }
-        log.verbose << " -> "  << new_lit << endl;
 
+        // sort by decreasing level, so the assertions literals are in
+        // the beginning. It's usefull also for the backjump
+        sort(new_lit.begin(),new_lit.end(),
+                [&](const Literal& l, const Literal& r) {
+                    return decision_levels[l.atom()] > decision_levels[r.atom()];});
+
+        log.verbose << " -> "  << new_lit << endl;
         // build the learned clause
         auto new_ptr = make_shared<Clause>(*this,new_lit, true,
                 conflict_clause, antecedents[it->atom()]);
@@ -297,17 +306,13 @@ int SATSolver::conflict_analysis() {
         conflict_clause = new_ptr;
     }
 
-    // find the backjump level, is the manimum level for whic the learned
-    // clause is an assertion clause
-    int backjump_level = 0;
-    for ( const auto& i : *conflict_clause ) {
-        // no current level, only previous level for backtrack
-        if ( decision_levels[i.atom()] == current_level ) continue;
-        // keep the maximum
-        backjump_level = max(backjump_level,decision_levels[i.atom()]);
-    }
-
-    return backjump_level;
+    // the conflict clause is an assertion clause, with the literal ordered by
+    // level. So the litteral in position 0 is in the conflict level, and the
+    // second one have the level of the backjump
+    if (conflict_clause->size() > 1)
+        return decision_levels[conflict_clause->at(1).atom()];
+    else
+        return 0;
 }
 
 void SATSolver::build_unsat_proof() {
