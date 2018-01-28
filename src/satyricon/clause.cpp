@@ -154,8 +154,7 @@ void SATSolver::Clause::print_justification(std::ostream& os,
         os << (prefix+"┗╸");
         learned_from[1]->print_justification(os,prefix+"  " );
     }
-    else
-        // if not learned, simply refer to the original forumal
+    else // if not learned, simply refer to the original forumal
         os << " from the original formula" << std::endl;
 }
 

@@ -1,13 +1,13 @@
-#include "sat_solver.hpp"
-#include "vsids.hpp"
-#include "clause.hpp"
-#include "assert_message.hpp"
 #include <array>
 #include <queue>
 #include <algorithm>
 #include <tuple>
 #include <iomanip>
+#include "assert_message.hpp"
+#include "clause.hpp"
 #include "log.hpp"
+#include "sat_solver.hpp"
+#include "vsids.hpp"
 
 using namespace std;
 using namespace Utils;
