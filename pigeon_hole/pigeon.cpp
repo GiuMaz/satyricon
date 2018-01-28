@@ -3,14 +3,12 @@
  * problem,  in whit N + 1 pigeon want to fit inside only N hole. This problem
  * is always not satisaible.
  */
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <exception>
 #include <cstdlib>
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include "ArgumentParser.hpp"
-
-using namespace std;
 
 int main(int argc, char* argv[])
 {
@@ -37,18 +35,18 @@ int main(int argc, char* argv[])
         parser.parseCLI(argc,argv);
     }
     catch ( Utils::ParsingException &e ) {
-        cout << e.what() << endl;
-        cout << parser;
+        std::cout << e.what() << std::endl;
+        std::cout << parser;
         return 1;
     }
 
     if ( help ) {
-        cout << parser;
+        std::cout << parser;
         return 0;
     }
 
     if ( !N ) {
-        cout << "Number of hole N is required\n" << parser;
+        std::cout << "Number of hole N is required\n" << parser;
         return 1;
     }
 
@@ -56,14 +54,14 @@ int main(int argc, char* argv[])
     int pigeon = hole + 1;
 
     // if specified, change output file
-    ostream os(0);
-    ofstream ofstr;
+    std::ostream os(nullptr);
+    std::ofstream ofstr;
     if ( of ) {
         ofstr.open(of.get_value());
         os.rdbuf(ofstr.rdbuf());
     }
     else
-        os.rdbuf(cout.rdbuf());
+        os.rdbuf(std::cout.rdbuf());
 
 
 // -----------------------------------------------------------------------------
