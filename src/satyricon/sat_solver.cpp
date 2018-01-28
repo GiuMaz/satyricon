@@ -50,7 +50,8 @@ bool SATSolver::solve() {
     // initialize search parameter
     unsigned int conflict_counter = 0;
     int restart_counter = 0;
-    unsigned int learn_limit = clauses.size()*initial_learn_mult;
+    unsigned int learn_limit = static_cast<unsigned int>(
+            static_cast<double>( clauses.size())*initial_learn_mult );
     restart_threshold = new_restart_threshold();
 
     // preprocess
@@ -103,7 +104,10 @@ bool SATSolver::solve() {
             // if the learning limit is reached, the learned clause must
             // be reduced, the new learning limit is now higher
             if ( enable_deletion && learned.size() >= learn_limit ) {
-                learn_limit += (learn_limit*percentual_learn_increase)/100.0;
+                // cast for suppres warning
+                learn_limit += static_cast<unsigned int>(
+                        (learn_limit*percentual_learn_increase)/100.0);
+
                 reduce_learned();
             }
 
@@ -221,7 +225,7 @@ bool SATSolver::propagation() {
         // extract the list of the opposite literal 
         // (they are false now, their watcher must be moved)
         auto failed = !l;
-        list<ClausePtr> to_move;
+        vector<ClausePtr> to_move;
         swap(to_move,watch_list[failed]);
 
         for (auto it = to_move.begin(); it != to_move.end(); ++it) {
@@ -530,7 +534,7 @@ void SATSolver::set_number_of_variable(unsigned int n) {
 
     number_of_variable = n;
 
-    for ( size_t i = 0; i < n; ++i) {
+    for ( unsigned int i = 0; i < n; ++i) {
         watch_list[Literal(i,true)];
         watch_list[Literal(i,false)];
     }

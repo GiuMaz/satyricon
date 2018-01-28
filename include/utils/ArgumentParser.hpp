@@ -24,14 +24,14 @@ namespace Utils {
 using ParsingException = std::runtime_error;
 
 // utility function for text wrapping
-inline std::string wrap_string(const std::string &s,int begin, int end) {
+inline std::string wrap_string(const std::string &s,size_t begin, size_t end) {
     assert_message(end > begin,"impossible to wrap text of negative size");
 
     std::istringstream iss(s);
     std::string wrapped, line;
     std::string filler = std::string(begin,' ');
 
-    int limit = end - begin;
+    size_t limit = end - begin;
     while( std::getline(iss,line) ) {
 
         wrapped += filler;

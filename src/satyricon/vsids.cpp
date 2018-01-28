@@ -37,24 +37,24 @@ void VSIDS_Info::decay() {
 
 Literal VSIDS_Info::select_new(const std::vector<literal_value>& assignment) {
     bool max_negated = false;
-    int max_atom = -1;
+    unsigned int max_atom = 0;
     double max_value = -1.0;
 
     // find the maximum value.
-    for (size_t i =0; i < positive.size(); ++i)
+    for (unsigned int i =0; i < positive.size(); ++i)
         if ( positive[i] > max_value && assignment[i] == LIT_UNASIGNED ) {
             max_value =  positive[i];
             max_atom = i;
         }
 
-    for (size_t i =0; i < negative.size(); ++i)
+    for (unsigned int i =0; i < negative.size(); ++i)
         if ( negative[i] > max_value && assignment[i] == LIT_UNASIGNED ) {
             max_negated = true;
             max_value =  negative[i];
             max_atom = i;
         }
 
-    assert_message(max_atom >= 0, "Unable to find a new literal in VSIDS");
+    assert_message(max_value >= 0.0, "Unable to find a new literal in VSIDS");
 
     return Literal(max_atom,max_negated);
 }

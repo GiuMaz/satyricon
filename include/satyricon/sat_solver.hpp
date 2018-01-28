@@ -3,7 +3,6 @@
 
 #include <queue>
 #include <vector>
-#include <list>
 #include <memory>
 #include <unordered_map>
 #include "literal.hpp"
@@ -78,8 +77,8 @@ private:
 
     // handfull type declaration
     using ClausePtr = std::shared_ptr<Clause>;
-    using WatchMap = std::unordered_map<Literal,std::list<ClausePtr >>;
-    using SubsumptionMap = std::unordered_map<Literal,std::list<ClausePtr >>;
+    using WatchMap = std::unordered_map<Literal,std::vector<ClausePtr >>;
+    using SubsumptionMap = std::unordered_map<Literal,std::vector<ClausePtr >>;
 
     // print the search status
     void print_status(unsigned int conflict, unsigned int restart,

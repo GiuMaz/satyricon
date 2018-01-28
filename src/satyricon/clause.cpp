@@ -7,7 +7,11 @@ namespace Satyricon {
 
 // utility function that compute the hash of a literal, in range 0..63
 uint8_t lit_hash( const Literal& l ) {
-    return l.atom()%32 + ( l.is_negated() ? 32 : 0 );
+    uint8_t body = l.atom()%32;
+    uint8_t sign = l.is_negated() ? 32 : 0 ;
+    assert_message( (sign+body)>=0 && (sign+body)<=63,
+            "literal hash out of bound");
+    return static_cast<uint8_t>(body + sign);
 }
 
 SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
@@ -42,6 +46,7 @@ void SATSolver::Clause::initialize_structure() {
     solver.watch_list[watch[1]].push_back(shared_from_this());
 
     // preprocessing with subsumption, only for not learned
+    if ( learned ) return;
     for ( const auto& l : literals )
         solver.subsumption[l].push_back(shared_from_this());
 }
@@ -89,7 +94,8 @@ void SATSolver::Clause::remove() {
     auto it = solver.watch_list[watch[0]].begin();
     while ( it != solver.watch_list[watch[0]].end() ) {
         if ( (*it) == shared_from_this() ) {
-            solver.watch_list[watch[0]].erase(it);
+            *it = solver.watch_list[watch[0]].back();
+             solver.watch_list[watch[0]].pop_back();
             break;
         }
         ++it;
@@ -97,7 +103,8 @@ void SATSolver::Clause::remove() {
     it = solver.watch_list[watch[1]].begin();
     while ( it != solver.watch_list[watch[1]].end() ) {
         if ( (*it) == shared_from_this() ) {
-            solver.watch_list[watch[1]].erase(it);
+            *it = solver.watch_list[watch[1]].back();
+             solver.watch_list[watch[1]].pop_back();
             break;
         }
         ++it;
@@ -110,7 +117,8 @@ void SATSolver::Clause::remove() {
         auto it = solver.subsumption[l].begin();
         while ( it != solver.subsumption[l].end() ) {
             if ( (*it) == shared_from_this() ) {
-                solver.subsumption[l].erase(it);
+                *it = solver.subsumption[l].back();
+                 solver.subsumption[l].pop_back();
                 break;
             }
             ++it;
