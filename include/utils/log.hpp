@@ -11,7 +11,10 @@ class Log {
 public:
 
     Log() : normal(0), verbose(0), level(LOG_NONE) {}
-    Log(log_level lv) : normal(0), verbose(0), level(lv) { set_level(lv); }
+
+    explicit Log(log_level lv) :
+        normal(0), verbose(0), level(lv) { set_level(lv); }
+
     Log(const Log& other) :
         normal(other.normal.rdbuf()),
         verbose(other.verbose.rdbuf()),
