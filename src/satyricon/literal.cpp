@@ -6,7 +6,6 @@ Literal::Literal() : negated(false), value(0) {}
 
 Literal::Literal(unsigned int _atom, bool _is_negated) :
     negated(_is_negated), value(_atom)
-    //value( _is_negated ? -_atom-1 : _atom+1 )
 {}
 
 Literal Literal::operator! () {
@@ -22,8 +21,7 @@ bool Literal::operator!=(const Literal& rhs) const {
 }
 
 std::string Literal::print() const {
-    //return std::string(negated?"-":"")+std::to_string(atom_val+1);
-    return std::to_string(value);
+    return (negated ? "-" : "") + std::to_string(value+1);
 }
 
 std::ostream& operator<<(std::ostream &os, Literal const &l) {
