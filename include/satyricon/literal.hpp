@@ -26,13 +26,14 @@ public:
     // constructor
     Literal();
     Literal(unsigned int _atom, bool _is_negated);
+    Literal(const Literal& other) = default;
 
     // getter
-    bool is_negated() const;
-    unsigned int atom() const;
+    bool is_negated() const { return negated; }
+    unsigned int atom() const { return value; }
 
     // assignment
-    Literal& operator=(const Literal& other);
+    Literal& operator=(const Literal& other) = default;
     // comparison operator
     bool operator==(const Literal& rhs) const;
     bool operator!=(const Literal& rhs) const;
@@ -44,11 +45,9 @@ public:
     std::string print() const;
 
 private:
-    int value;
-    /*
-    unsigned int atom_val;
-    bool negated;
-    */
+    // 1 bit for the sign, 31 for the value
+    bool negated       :  1;
+    unsigned int value : 31;
 };
 
 // usefull print method
@@ -65,7 +64,7 @@ template <>
 struct hash<Satyricon::Literal>
 {
     std::size_t operator()(const Satyricon::Literal& k) const {
-        return hash<int>()(k.atom());
+        return (size_t)(k.is_negated() << 31) + k.atom();
     }
 };
 
