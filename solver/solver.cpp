@@ -1,17 +1,19 @@
-#include <iostream>
-#include <fstream>
-#include <csignal>
-#include <iomanip>
-#include <exception>
-#include <cstdlib>
 #include <chrono>
-#include "dimacs_parser.hpp"
-#include "sat_solver.hpp"
+#include <csignal>
+#include <cstdlib>
+#include <exception>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
 #include "ArgumentParser.hpp"
-#include "log.hpp"
+#include "dimacs_parser.hpp"
 #include "literal.hpp"
+#include "log.hpp"
+#include "sat_solver.hpp"
 
-using namespace std;
+using std::exception;
+using std::cout; using std::endl; using std::cin;
+using std::string; using std::to_string;
 using Utils::ArgumentParser;
 
 // description of program, both for documenation and help message
@@ -43,14 +45,14 @@ std::string program_description =
 "of the problem."
 ;
 
-std::chrono::time_point<std::chrono::steady_clock> start;
+std::chrono::time_point<std::chrono::steady_clock> start; // NOLINT(cert-err58-cpp)
 
 void signalHandler( int signum ) {
    cout << "Interrupt signal (" << signum << ") received.\n";
 
-    auto end_time = chrono::steady_clock::now();
-    chrono::duration<double> elapsed = end_time - start;
-    cout << "stopped after: " << fixed << setprecision(2) <<
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed = end_time - start;
+    cout << "stopped after: " << std::fixed << std::setprecision(2) <<
         elapsed.count() << "s\n";
 
    cout << "UNKNOWN\n";
@@ -114,7 +116,7 @@ int main(int argc, char* argv[])
 
     // restarting policy
     unsigned int restart_interval_multiplier = 10;
-    auto& restart_mult = parser.make_option<int>("restart multiplier",
+    auto& restart_mult = parser.make_option<unsigned int>("restart multiplier",
             "restarting sequence multiplicator (default "+
             to_string(restart_interval_multiplier)+")", {"b","restart-mult"});
 
@@ -146,8 +148,8 @@ int main(int argc, char* argv[])
     }
 
     // redirect input file
-    ifstream ifstr;
-    istream is(0);
+    std::ifstream ifstr;
+    std::istream is(nullptr);
     if ( in ) {
         ifstr.open(in.get_value());
         if ( ! ifstr.good() ) {
@@ -214,17 +216,17 @@ int main(int argc, char* argv[])
     Utils::Log log(verbose ? Utils::LOG_VERBOSE : Utils::LOG_NORMAL);
     solver.set_log(log);
 
-    start = chrono::steady_clock::now();
+    start = std::chrono::steady_clock::now();
 
     // parsing file
     try {
         bool conflict = Satyricon::parse_file(solver,is);
 
         // get initilization time
-        auto init_time = chrono::steady_clock::now();
-        chrono::duration<double> elapsed = init_time - start;
+        auto init_time = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed = init_time - start;
         log.normal << "read file and initialized solver in: " <<
-            fixed << setprecision(2) << elapsed.count() << "s\n";
+            std::fixed << std::setprecision(2) << elapsed.count() << "s\n";
 
         // if found a conflict at level zero, report the conflict
         if ( conflict ) {
@@ -260,16 +262,16 @@ int main(int argc, char* argv[])
     bool satisfiable = solver.solve();
 
     // print exec time
-    auto end_time = chrono::steady_clock::now();
-    chrono::duration<double> elapsed = end_time - start;
-    log.normal << "completed in: " << fixed << setprecision(2) <<
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed = end_time - start;
+    log.normal << "completed in: " << std::fixed << std::setprecision(2) <<
         elapsed.count() << "s\n";
 
     // print result
     log.normal << (satisfiable ? "SATISFIABLE" : "UNSATISFIABLE") << endl;
-    if ( print_sat && satisfiable == true )
+    if ( print_sat && satisfiable )
         log.normal << "Model: " << endl << solver.string_model() << endl;
-    if ( print_unsat && satisfiable == false )
+    if ( print_unsat && !satisfiable )
         log.normal << "Proof: " << endl << solver.unsat_proof();
 
     return 0;
