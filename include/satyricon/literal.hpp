@@ -31,9 +31,10 @@ public:
     Literal(const Literal& other) = default;
 
     // getter
-    bool is_negated() const { return value & 1; }
-    int atom() const { return value >> 1; }
-    int index() const { return value; }
+    // TODO: change to sign, revert everything!
+    bool sign() const { return value & 1; }
+    unsigned int var() const   { return (unsigned int) value >> 1; }
+    unsigned int index() const { return (unsigned int) value; }
     int opposite_index() const { return value ^ 1; }
 
     // assignment
@@ -43,7 +44,7 @@ public:
     bool operator!=(const Literal& rhs) const { return value != rhs.value; }
     // inversion: return a new literal with the same atom value and
     // reversed polarity
-    Literal operator! () { return Literal( atom(), !is_negated() ); }
+    Literal operator! () { Literal l; l.value ^= 1; return l; }
 
     // utility print
     std::string print() const { return std::to_string(value); }
@@ -53,6 +54,7 @@ private:
 };
 
 static const Literal UNDEF_LIT(-1,true); // undefined literal
+
 // usefull print method
 inline std::ostream& operator<<(std::ostream &os, Literal const &l) {
     return os << l.print();
@@ -83,7 +85,7 @@ template <>
 struct hash<Satyricon::Literal>
 {
     std::size_t operator()(const Satyricon::Literal& k) const {
-        return (size_t)(k.is_negated() << 31) + k.atom();
+        return (size_t)(k.sign() << 31) + k.var();
     }
 };
 

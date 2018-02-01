@@ -184,9 +184,9 @@ string SATSolver::string_model() {
 literal_value SATSolver::get_asigned_value(const Literal & l) const {
     // LIT_TRUE = 2, LIT_UNASIGNED = 1, LIT_FALSE = 2
     // so for the negated result we can do 2 - value
-    if ( l.is_negated() )
-        return static_cast<literal_value>(LIT_TRUE - values[l.atom()]);
-    return values[l.atom()];
+    if ( l.sign() )
+        return static_cast<literal_value>(LIT_TRUE - values[l.var()]);
+    return values[l.var()];
 }
 
 bool SATSolver::assign(Literal l, ClausePtr antecedent) {
@@ -202,9 +202,9 @@ bool SATSolver::assign(Literal l, ClausePtr antecedent) {
 
     // unassigned, update asignment
     ++number_of_assigned_variable;
-    values[l.atom()] = l.is_negated() ? LIT_FALSE : LIT_TRUE;
-    decision_levels[l.atom()] = current_level;
-    antecedents[l.atom()] = antecedent;
+    values[l.var()] = l.sign() ? LIT_FALSE : LIT_TRUE;
+    decision_levels[l.var()] = current_level;
+    antecedents[l.var()] = antecedent;
 
     // save the current decision, for eventual backtrack
     trial.push_back(l);
@@ -257,7 +257,7 @@ int SATSolver::conflict_analysis() {
     // count how many variables are assigned on the current level.
     int this_level = 0;
     for ( const auto& l : *conflict_clause )
-        if ( decision_levels[l.atom()] == current_level )
+        if ( decision_levels[l.var()] == current_level )
             ++this_level;
 
     conflict_clause->update_activity();
@@ -272,39 +272,39 @@ int SATSolver::conflict_analysis() {
 
         // resolution process
         log.verbose << "\tresolve " << conflict_clause->print() <<
-            " and " << antecedents[it->atom()]->print();
+            " and " << antecedents[it->var()]->print();
 
         // decrease the counter, a literal of the current level is removed
         this_level--;
 
         // increase activity of antecedent
-        antecedents[ it->atom() ]->update_activity();
+        antecedents[ it->var() ]->update_activity();
 
         std::vector<Literal> new_lit; // literals of the new clause
         // put everything except the resolved literal
         for ( const auto& l : *conflict_clause )
             if ( l != !(*it) ) new_lit.push_back(l);
 
-        for ( auto l : *(antecedents[ it->atom() ]) ) {
+        for ( auto l : *(antecedents[ it->var() ]) ) {
             if (l == *it) continue; // no resolved literal
             if (find(new_lit.begin(),new_lit.end(),l) != new_lit.end())
                 continue; // no duplicates
             // add all the other
             new_lit.push_back(l);
             // if this is also decided at this level, increase the counter
-            if ( decision_levels[l.atom()] == current_level) this_level++;
+            if ( decision_levels[l.var()] == current_level) this_level++;
         }
 
         // sort by decreasing level, so the assertions literals are in
         // the beginning. It's usefull also for the backjump
         sort(new_lit.begin(),new_lit.end(),
                 [&](const Literal& l, const Literal& r) {
-                    return decision_levels[l.atom()] > decision_levels[r.atom()];});
+                    return decision_levels[l.var()] > decision_levels[r.var()];});
 
         log.verbose << " -> "  << new_lit << endl;
         // build the learned clause
         auto new_ptr = std::make_shared<Clause>(*this,new_lit, true,
-                conflict_clause, antecedents[it->atom()]);
+                conflict_clause, antecedents[it->var()]);
 
         conflict_clause = new_ptr;
     }
@@ -313,7 +313,7 @@ int SATSolver::conflict_analysis() {
     // level. So the litteral in position 0 is in the conflict level, and the
     // second one have the level of the backjump
     if (conflict_clause->size() > 1)
-        return decision_levels[conflict_clause->at(1).atom()];
+        return decision_levels[conflict_clause->at(1).var()];
 
     return 0;
 }
@@ -327,13 +327,13 @@ void SATSolver::build_unsat_proof() {
                     !(*it)) != conflict_clause->end()) {
 
             log.verbose << "\t resolve " << conflict_clause->print() << " and "
-                << antecedents[it->atom()]->print();
+                << antecedents[it->var()]->print();
 
             std::vector<Literal> new_lit;
             for ( const auto& l : *conflict_clause )
                 if ( l != !(*it) ) new_lit.push_back(l);
 
-            for ( auto l : *(antecedents[ it->atom() ]) ) {
+            for ( auto l : *(antecedents[ it->var() ]) ) {
                 if (l == *it) continue;
                 if (find(new_lit.begin(),new_lit.end(),l) != new_lit.end())
                     continue;
@@ -342,7 +342,7 @@ void SATSolver::build_unsat_proof() {
             log.verbose << " -> "  << new_lit << endl;
 
             auto new_ptr = std::make_shared<Clause>(*this,new_lit, true,
-                    conflict_clause, antecedents[it->atom()]);
+                    conflict_clause, antecedents[it->var()]);
             conflict_clause = new_ptr;
             if ( conflict_clause->size() == 0 ) break; // found the empty clause
         }
@@ -414,13 +414,13 @@ void SATSolver::backtrack(int backtrack_level) {
     // TODO: rincontrollare la logica di questo, da problemi di segno
     for ( int i = trial.size()-1; i >= 0; --i) {
         // end if the required level is reached
-        if (decision_levels[trial[i].atom()] <= backtrack_level) break;
+        if (decision_levels[trial[i].var()] <= backtrack_level) break;
 
         // otherwise keep unasigning the assigned value
         log.verbose << "\tunassign " << trial[i] << endl;
-        values[trial[i].atom()] = LIT_UNASIGNED;
-        decision_levels[trial[i].atom()] = -1;
-        antecedents[trial[i].atom()] = nullptr;
+        values[trial[i].var()] = LIT_UNASIGNED;
+        decision_levels[trial[i].var()] = -1;
+        antecedents[trial[i].var()] = nullptr;
         number_of_assigned_variable--;
 
         // remove from the trial

@@ -7,8 +7,8 @@ namespace Satyricon {
 
 // utility function that compute the hash of a literal, in range 0..63
 uint8_t lit_hash( const Literal& l ) {
-    uint8_t body = l.atom()%32;
-    uint8_t sign = l.is_negated() ? 32 : 0 ;
+    uint8_t body = l.var()%32;
+    uint8_t sign = l.sign() ? 32 : 0 ;
     assert_message( (sign+body)>=0 && (sign+body)<=63,
             "literal hash out of bound");
     return static_cast<uint8_t>(body + sign);

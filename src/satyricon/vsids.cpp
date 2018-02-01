@@ -60,10 +60,10 @@ Literal VSIDS_Info::select_new(const std::vector<literal_value>& assignment) {
 }
 
 void VSIDS_Info::update(const Literal& lit) {
-    if ( lit.is_negated() )
-        negative[lit.atom()]+=update_value;
+    if ( lit.sign() )
+        negative[lit.var()]+=update_value;
     else
-        positive[lit.atom()]+=update_value;
+        positive[lit.var()]+=update_value;
 }
 
 } // end of namespace Satyricon
