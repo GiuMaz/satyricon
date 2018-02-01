@@ -14,16 +14,13 @@ uint8_t lit_hash( const Literal& l ) {
     return static_cast<uint8_t>(body + sign);
 }
 
-SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> &lits, bool learn,
-        const std::shared_ptr<Clause> &first, const std::shared_ptr<Clause> &second) :
+SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> &lits, bool learn) :
     activity(0.0),
     signature(0),
     solver(s),
     literals(std::move(lits)),
     learned(learn)
 {
-    learned_from[0] = first;
-    learned_from[1] = second;
     // if the clause is empty, don't do anything
     if ( literals.empty() ) return;
 
@@ -137,26 +134,6 @@ std::string SATSolver::Clause::print() const {
     while ( it != literals.end() ) { os << "," << *(it++); }
     os << "}";
     return os.str();
-}
-
-void SATSolver::Clause::print_justification(std::ostream& os,
-        const std::string& prefix) const {
-    os << print(); // print the clause
-    if ( learned ) {
-        // if learned, explain how the clause was learned
-        assert_message(learned_from[0] != nullptr && learned_from[1] != nullptr,
-                "learned_from is nullptr, must be another clause");
-
-        os << " from resolution of " << learned_from[0]->print() <<
-            " and " << learned_from[1]->print() << std::endl;
-
-        os << (prefix+"┣╸");
-        learned_from[0]->print_justification(os,prefix+"┃ ");
-        os << (prefix+"┗╸");
-        learned_from[1]->print_justification(os,prefix+"  " );
-    }
-    else // if not learned, simply refer to the original forumal
-        os << " from the original formula" << std::endl;
 }
 
 void SATSolver::Clause::update_activity() {

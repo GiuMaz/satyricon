@@ -40,10 +40,7 @@ std::string program_description =
 "If requested, the program can build a proof of the "
 "satisiability/unsatisfiablity results. If the problem is SATISFIABLE, a model "
 "are given, with a possible asignment of all the literals that can satisfy all "
-"the clauses. If the problem is UNSATISFIABLE the program show how is possible "
-"to build the empty clause with a resolution process of the original clauses "
-"of the problem."
-;
+"the clauses." ;
 
 std::chrono::time_point<std::chrono::steady_clock> start; // NOLINT(cert-err58-cpp)
 
@@ -88,10 +85,6 @@ int main(int argc, char* argv[])
             "WARNING: can be really expansive",{"v","verbose"});
 
     // print proof
-    auto& print_sat_proof = parser.make_flag("sat_proof",
-            "print the model if the formula is satisfiable",{"s","proof-sat"});
-    auto& print_unsat_proof = parser.make_flag("unsat_proof",
-            "print proof if the formula is unsatisfiable",{"u","proof-unsat"});
     auto& print_proof = parser.make_flag("print_proof",
             "print proof (both for sat and unsat)",{"p","proof"});
 
@@ -204,10 +197,6 @@ int main(int argc, char* argv[])
         percentual_learn_increase = learn_increase.get_value();
     }
 
-    // print proof
-    bool print_sat   = print_sat_proof   || print_proof;
-    bool print_unsat = print_unsat_proof || print_proof;
-
 // -----------------------------------------------------------------------------
 
     // SOLVER
@@ -269,10 +258,8 @@ int main(int argc, char* argv[])
 
     // print result
     log.normal << (satisfiable ? "SATISFIABLE" : "UNSATISFIABLE") << endl;
-    if ( print_sat && satisfiable )
+    if ( print_proof && satisfiable )
         log.normal << "Model: " << endl << solver.string_model() << endl;
-    if ( print_unsat && !satisfiable )
-        log.normal << "Proof: " << endl << solver.unsat_proof();
 
     return 0;
 }

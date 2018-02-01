@@ -74,7 +74,6 @@ bool SATSolver::solve() {
             // so the formula must be unsatisfiable
             if ( current_level == 0 ) {
                 log.verbose << "conflict at level 0, build unsat proof\n";
-                build_unsat_proof();
                 print_status(conflict_counter,restart_counter, learn_limit);
                 return false; // UNSAT
             }
@@ -303,8 +302,7 @@ int SATSolver::conflict_analysis() {
 
         log.verbose << " -> "  << new_lit << endl;
         // build the learned clause
-        auto new_ptr = std::make_shared<Clause>(*this,new_lit, true,
-                conflict_clause, antecedents[it->var()]);
+        auto new_ptr = std::make_shared<Clause>(*this,new_lit, true);
 
         conflict_clause = new_ptr;
     }
@@ -316,37 +314,6 @@ int SATSolver::conflict_analysis() {
         return decision_levels[conflict_clause->at(1).var()];
 
     return 0;
-}
-
-void SATSolver::build_unsat_proof() {
-    // this process is really similar to the analysis of conflict, but the
-    // process stop when only when the empty clause is reached
-    for( auto it = trial.rbegin(); it != trial.rend(); ++it) {
-
-        if (find(conflict_clause->begin(), conflict_clause->end(),
-                    !(*it)) != conflict_clause->end()) {
-
-            log.verbose << "\t resolve " << conflict_clause->print() << " and "
-                << antecedents[it->var()]->print();
-
-            std::vector<Literal> new_lit;
-            for ( const auto& l : *conflict_clause )
-                if ( l != !(*it) ) new_lit.push_back(l);
-
-            for ( auto l : *(antecedents[ it->var() ]) ) {
-                if (l == *it) continue;
-                if (find(new_lit.begin(),new_lit.end(),l) != new_lit.end())
-                    continue;
-                new_lit.push_back(l);
-            }
-            log.verbose << " -> "  << new_lit << endl;
-
-            auto new_ptr = std::make_shared<Clause>(*this,new_lit, true,
-                    conflict_clause, antecedents[it->var()]);
-            conflict_clause = new_ptr;
-            if ( conflict_clause->size() == 0 ) break; // found the empty clause
-        }
-    }
 }
 
 bool SATSolver::learn_clause() {
@@ -478,13 +445,6 @@ void SATSolver::preprocessing() {
     swap(clauses,new_clauses);
 }
 
-string SATSolver::unsat_proof() {
-    std::ostringstream oss;
-    // the unsat proof is the the justification for the empty clause
-    conflict_clause->print_justification(oss);
-    return oss.str();
-}
-
 void SATSolver::clause_activity_decay() {
 
     // if big value is reached, a normalization is required
@@ -534,7 +494,7 @@ void SATSolver::set_number_of_variable(unsigned int n) {
 
     number_of_variable = n;
 
-    for ( unsigned int i = 0; i < n; ++i) {
+    for ( int i = 0; i < n; ++i) {
         watch_list[Literal(i,true)];
         watch_list[Literal(i,false)];
     }

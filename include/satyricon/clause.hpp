@@ -34,9 +34,7 @@ public:
 
     // disable empy constructor, a clause must refer to a SAT instance
     Clause() = delete;
-    Clause(SATSolver& s, std::vector<Literal> &lits, bool learn,
-            const std::shared_ptr<Clause> &first  = nullptr,
-            const std::shared_ptr<Clause> &second = nullptr);
+    Clause(SATSolver& s, std::vector<Literal> &lits, bool learn);
 
     // must remove the clausole from the watched list
     void remove();
@@ -62,13 +60,6 @@ public:
     // signature used for subsumption of clause
     uint64_t get_signature() const;
 
-    // print how the clause are added inside the sistem
-    // if the clasue is one of the original clause it simply print that.
-    // if the clause is a learned one it also print the justification
-    // of the two parents that generate the clause
-    void print_justification(std::ostream& os,
-            const std::string& prefix = "") const;
-
     // helpfull method for literals access and iteration
     std::vector<Literal>& get_literals();
     const std::vector<Literal>& get_literals() const;
@@ -88,7 +79,6 @@ private:
     std::vector<Literal> literals;
     bool learned; // true iff the clause is learned
     Literal watch[2];
-    std::shared_ptr<Clause > learned_from[2];
 };
 
 } // end namespace Satyricon

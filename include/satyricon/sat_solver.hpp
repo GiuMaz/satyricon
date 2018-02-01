@@ -46,12 +46,6 @@ public:
     // return a printable version of the model.
     std::string string_model();
 
-    // TODO: remove proof, for now
-    // if the problem is unsatisfiable, return a way to produce the empty clause
-    // from resolution of the clause of the original problem
-    std::string unsat_proof();
-
-
     // decay factor for clause activity
     void set_clause_decay(double clause_decay_factor);
 
@@ -95,9 +89,6 @@ private:
 
     // build proof of satisfiability
     void build_sat_proof();
-
-    // build the resolution of the empty clause
-    void build_unsat_proof();
 
     // learn the conflict clause
     bool learn_clause();
