@@ -44,7 +44,7 @@ public:
     bool operator!=(const Literal& rhs) const { return value != rhs.value; }
     // inversion: return a new literal with the same atom value and
     // reversed polarity
-    Literal operator! () { Literal l; l.value ^= 1; return l; }
+    Literal operator! () { Literal l; l.value = value ^ 1; return l; }
 
     // utility print
     std::string print() const { return std::to_string(value); }
