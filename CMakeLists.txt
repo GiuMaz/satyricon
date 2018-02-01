@@ -22,6 +22,3 @@ target_link_libraries(satyricon PRIVATE utils)
 add_executable(solver solver/solver.cpp)
 target_link_libraries(solver PRIVATE satyricon utils)
 
-add_executable(pigeon_hole pigeon_hole/pigeon.cpp)
-target_link_libraries(pigeon_hole PRIVATE utils)
-
