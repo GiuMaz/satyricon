@@ -4,3 +4,4 @@ example/*
 compile_commands.json
 .vimrc
 .idea/*
+cnf/*
