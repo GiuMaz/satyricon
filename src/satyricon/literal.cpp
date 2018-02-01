@@ -1,5 +1,6 @@
 #include "literal.hpp"
 
+/*
 namespace Satyricon {
 
 Literal::Literal() : negated(false), value(0) {}
@@ -44,5 +45,7 @@ std::ostream& operator<<(std::ostream &os, std::vector<Literal> const &v) {
     return os << "}";
 }
 
+
 } // end of namespace Satyricon
+*/
 

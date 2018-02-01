@@ -14,15 +14,16 @@ uint8_t lit_hash( const Literal& l ) {
     return static_cast<uint8_t>(body + sign);
 }
 
-SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
-        std::shared_ptr<Clause> first, std::shared_ptr<Clause> second) :
+SATSolver::Clause::Clause(SATSolver& s, std::vector<Literal> &lits, bool learn,
+        const std::shared_ptr<Clause> &first, const std::shared_ptr<Clause> &second) :
     activity(0.0),
     signature(0),
     solver(s),
-    literals(lits),
-    learned(learn),
-    learned_from({first, second})
+    literals(std::move(lits)),
+    learned(learn)
 {
+    learned_from[0] = first;
+    learned_from[1] = second;
     // if the clause is empty, don't do anything
     if ( literals.empty() ) return;
 
@@ -84,8 +85,8 @@ bool SATSolver::Clause::propagate(Literal l) {
         solver.assign(watch[1],shared_from_this());
         return false; // no conflict
     }
-    else
-        return true; // conflict!
+    // conflict!
+    return true;
 }
 
 void SATSolver::Clause::remove() {

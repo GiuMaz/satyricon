@@ -9,8 +9,8 @@
 #include "sat_solver.hpp"
 #include "vsids.hpp"
 
-using namespace std;
-using namespace Utils;
+using std::endl; using std::setw;
+using std::vector; using std::string; using std::queue; using std::set;
 
 namespace Satyricon {
 
@@ -49,7 +49,7 @@ bool SATSolver::solve() {
 
     // initialize search parameter
     unsigned int conflict_counter = 0;
-    int restart_counter = 0;
+    unsigned int restart_counter = 0;
     unsigned int learn_limit = static_cast<unsigned int>(
             static_cast<double>( clauses.size())*initial_learn_mult );
     restart_threshold = new_restart_threshold();
@@ -142,7 +142,7 @@ void SATSolver::print_status(unsigned int conflict, unsigned int restart,
     log.normal << ", learned: " << setw(7) <<  learned.size() << endl;
 }
 
-int SATSolver::next_restart_interval() {
+unsigned int SATSolver::next_restart_interval() {
     if ( luby_next == ( (1<<luby_k) -1) ) {
         luby_memoization.push_back( 1 << (luby_k-1) );
         luby_k++;
@@ -157,7 +157,7 @@ int SATSolver::next_restart_interval() {
     return luby_memoization.back();
 }
 
-int SATSolver::new_restart_threshold() {
+unsigned int SATSolver::new_restart_threshold() {
     return restart_interval_multiplier * next_restart_interval();
 }
 
@@ -174,20 +174,19 @@ const vector<int>& SATSolver::get_model() {
 }
 
 string SATSolver::string_model() {
-    ostringstream oss;
+    std::ostringstream oss;
     oss << "[ ";
     for ( auto i : model ) oss << i << " ";
     oss << "]";
     return oss.str();
 }
 
-literal_value SATSolver::get_asigned_value(const Literal & l) {
+literal_value SATSolver::get_asigned_value(const Literal & l) const {
     // LIT_TRUE = 2, LIT_UNASIGNED = 1, LIT_FALSE = 2
     // so for the negated result we can do 2 - value
     if ( l.is_negated() )
-        return (literal_value)(LIT_TRUE - values[l.atom()]);
-    else
-        return values[l.atom()];
+        return static_cast<literal_value>(LIT_TRUE - values[l.atom()]);
+    return values[l.atom()];
 }
 
 bool SATSolver::assign(Literal l, ClausePtr antecedent) {
@@ -304,7 +303,7 @@ int SATSolver::conflict_analysis() {
 
         log.verbose << " -> "  << new_lit << endl;
         // build the learned clause
-        auto new_ptr = make_shared<Clause>(*this,new_lit, true,
+        auto new_ptr = std::make_shared<Clause>(*this,new_lit, true,
                 conflict_clause, antecedents[it->atom()]);
 
         conflict_clause = new_ptr;
@@ -315,8 +314,8 @@ int SATSolver::conflict_analysis() {
     // second one have the level of the backjump
     if (conflict_clause->size() > 1)
         return decision_levels[conflict_clause->at(1).atom()];
-    else
-        return 0;
+
+    return 0;
 }
 
 void SATSolver::build_unsat_proof() {
@@ -342,7 +341,7 @@ void SATSolver::build_unsat_proof() {
             }
             log.verbose << " -> "  << new_lit << endl;
 
-            auto new_ptr = make_shared<Clause>(*this,new_lit, true,
+            auto new_ptr = std::make_shared<Clause>(*this,new_lit, true,
                     conflict_clause, antecedents[it->atom()]);
             conflict_clause = new_ptr;
             if ( conflict_clause->size() == 0 ) break; // found the empty clause
@@ -387,10 +386,10 @@ bool SATSolver::add_clause( const std::vector<Literal>& c ) {
     }
 
     // an empty clause is a conflict
-    if ( new_c.size() == 0 ) return true; // conflict
+    if (new_c.empty()) return true; // conflict
 
     // add the new clause to the problem
-    clauses.push_back(make_shared<SATSolver::Clause>(*this, new_c,false));
+    clauses.push_back(std::make_shared<SATSolver::Clause>(*this, new_c,false));
     clauses.back()->initialize_structure();
 
     // initialize vsids info
@@ -412,6 +411,7 @@ void SATSolver::backtrack(int backtrack_level) {
     log.verbose << "bactrack to level " << backtrack_level <<
         " from " << current_level << endl;
 
+    // TODO: rincontrollare la logica di questo, da problemi di segno
     for ( int i = trial.size()-1; i >= 0; --i) {
         // end if the required level is reached
         if (decision_levels[trial[i].atom()] <= backtrack_level) break;
@@ -479,7 +479,7 @@ void SATSolver::preprocessing() {
 }
 
 string SATSolver::unsat_proof() {
-    ostringstream oss;
+    std::ostringstream oss;
     // the unsat proof is the the justification for the empty clause
     conflict_clause->print_justification(oss);
     return oss.str();

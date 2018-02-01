@@ -11,6 +11,8 @@
 
 namespace Satyricon {
 
+typedef int var;
+
 /**
  * SAT Solver.
  * This class is used to solve a SAT problem instance.
@@ -21,6 +23,9 @@ public:
 
     SATSolver();
 
+    // TODO: for minisat compatibility, and for problem creation as a library
+    //var newVar(); // get a new variable
+    
     // Set the number of variable that can be used in the sat problem.
     // every possible variable is an atom that can be negated or not.
     void set_number_of_variable(unsigned int n);
@@ -41,9 +46,11 @@ public:
     // return a printable version of the model.
     std::string string_model();
 
+    // TODO: remove proof, for now
     // if the problem is unsatisfiable, return a way to produce the empty clause
     // from resolution of the clause of the original problem
     std::string unsat_proof();
+
 
     // decay factor for clause activity
     void set_clause_decay(double clause_decay_factor);
@@ -72,6 +79,8 @@ public:
     void set_learning_increase( double value );
 
 private:
+    // new experimental clause class
+    friend class ClauseCompact;
     // forward declaration of support class Clause
     class Clause;
 
@@ -94,7 +103,7 @@ private:
     bool learn_clause();
 
     // get value of a literal
-    literal_value get_asigned_value(const Literal & l);
+    literal_value get_asigned_value(const Literal & l) const;
 
     // assign a literal l with antecedent c (nullptr for decided)
     bool assign(Literal l, ClausePtr c);
@@ -114,8 +123,8 @@ private:
     bool subset(const Clause& inner,const Clause& outer);
 
     // interval before restart
-    int next_restart_interval();
-    int new_restart_threshold();
+    unsigned int next_restart_interval();
+    unsigned int new_restart_threshold();
 
     // reduce learned clause. The clauses are sorted by activity,
     // and the lower half are removed execept of clauses that are the
@@ -173,9 +182,9 @@ private:
     bool enable_deletion;
 
     // values for luby sequence, used for restart policy
-    int luby_k    = 1;
-    int luby_next = 1;
-    std::vector<int> luby_memoization {};
+    size_t luby_k    = 1;
+    size_t luby_next = 1;
+    std::vector<unsigned int> luby_memoization {};
 
     // restarting 
     unsigned int restart_interval_multiplier;

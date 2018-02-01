@@ -24,36 +24,55 @@ enum literal_value {
 class Literal {
 public:
     // constructor
-    Literal();
-    Literal(unsigned int _atom, bool _is_negated);
+    Literal(): value(-1) {}
+    Literal(int _atom, bool _is_negated) :
+        value( _atom + _atom + (int)_is_negated ) {}
+
     Literal(const Literal& other) = default;
 
     // getter
-    bool is_negated() const { return negated; }
-    unsigned int atom() const { return value; }
+    bool is_negated() const { return value & 1; }
+    int atom() const { return value >> 1; }
+    int index() const { return value; }
+    int opposite_index() const { return value ^ 1; }
 
     // assignment
     Literal& operator=(const Literal& other) = default;
     // comparison operator
-    bool operator==(const Literal& rhs) const;
-    bool operator!=(const Literal& rhs) const;
+    bool operator==(const Literal& rhs) const { return value == rhs.value; }
+    bool operator!=(const Literal& rhs) const { return value != rhs.value; }
     // inversion: return a new literal with the same atom value and
     // reversed polarity
-    Literal operator! ();
+    Literal operator! () { return Literal( atom(), !is_negated() ); }
 
     // utility print
-    std::string print() const;
+    std::string print() const { return std::to_string(value); }
 
 private:
-    // 1 bit for the sign, 31 for the value
-    bool negated       :  1;
-    unsigned int value : 31;
+    int value;
 };
 
+static const Literal UNDEF_LIT(-1,true); // undefined literal
 // usefull print method
-std::ostream& operator<<(std::ostream &os, Literal const &l);
-std::ostream& operator<<(std::ostream &os, std::set<Literal> const &s);
-std::ostream& operator<<(std::ostream &os, std::vector<Literal> const &v);
+inline std::ostream& operator<<(std::ostream &os, Literal const &l) {
+    return os << l.print();
+}
+
+inline std::ostream& operator<<(std::ostream &os, std::set<Literal> const &s) {
+    if ( s.empty() ) return os << "□";
+    auto it = s.begin();
+    os << "{" << *it++;
+    while ( it != s.end() ) os << "," << *(it++) ;
+    return os << "}";
+}
+
+inline std::ostream& operator<<(std::ostream &os, std::vector<Literal> const &v) {
+    if ( v.empty() ) return os << "□";
+    auto it = v.begin();
+    os << "{" << *it++;
+    while ( it != v.end() ) os << "," << *(it++) ;
+    return os << "}";
+}
 
 } // end namespace Satyricon
 

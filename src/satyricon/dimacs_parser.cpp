@@ -1,37 +1,37 @@
-#include "dimacs_parser.hpp"
-#include "sat_solver.hpp"
-#include "literal.hpp"
+#include <exception>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <exception>
+#include "dimacs_parser.hpp"
+#include "literal.hpp"
+#include "sat_solver.hpp"
 
-using namespace std;
-using namespace Satyricon;
+//using namespace std;
+//using namespace Satyricon;
 
-bool Satyricon::parse_file(SATSolver& solver, istream & is)
+bool Satyricon::parse_file(SATSolver& solver, std::istream & is)
 {
-    int number_of_clausole, number_of_variable;
-    string line;
+    unsigned int number_of_clausole = 0, number_of_variable = 0;
+    std::string line;
 
     // find header line
     while (getline(is, line)) {
         if (line[0] == 'c') continue;
 
         std::istringstream iss(line);
-        string p, cnf, other;
+        std::string p, cnf, other;
 
         if ( !(iss >> p >> cnf >> number_of_variable >> number_of_clausole)
                 || (iss >> other) || p != "p" || cnf != "cnf")
-            throw domain_error(
+            throw std::domain_error(
                     "expected a 'p cnf NUMBER_OF_VARIABLE NUMBER_OF_CLAUSOLE'"
                     " as first line");
         break;
     }
     solver.set_number_of_variable(number_of_variable);
 
-    int read_clausole = 0;
+    unsigned int read_clausole = 0;
     // read clausoles
 
     std::vector<Literal> c;
@@ -44,9 +44,9 @@ bool Satyricon::parse_file(SATSolver& solver, istream & is)
 
         while( !iss.eof() ) {
             if ( !(iss >> value) )
-                throw domain_error("invalid simbol on clausole " + line);
-            if( value < -number_of_variable || value > number_of_variable)
-                throw domain_error(string("invalid variable ")+to_string(value));
+                throw std::domain_error("invalid simbol on clausole " + line);
+            if(abs(value) > number_of_variable)
+                throw std::domain_error(std::string("invalid variable ")+std::to_string(value));
 
             if (value == 0) {
                 read_clausole++;

@@ -3,9 +3,12 @@
 
 #include <string>
 #include <memory>
+#include <new>
+#include <stdlib.h>
 #include <sstream>
 #include "literal.hpp"
 #include "sat_solver.hpp"
+#include "assert_message.hpp"
 
 namespace Satyricon {
 
@@ -31,11 +34,11 @@ public:
 
     // disable empy constructor, a clause must refer to a SAT instance
     Clause() = delete;
-    Clause(SATSolver& s, std::vector<Literal> lits, bool learn,
-            std::shared_ptr<Clause> first  = nullptr,
-            std::shared_ptr<Clause> second = nullptr);
+    Clause(SATSolver& s, std::vector<Literal> &lits, bool learn,
+            const std::shared_ptr<Clause> &first  = nullptr,
+            const std::shared_ptr<Clause> &second = nullptr);
 
-   // must remove the clausole from the watched list
+    // must remove the clausole from the watched list
     void remove();
 
     // propagate the information after a literal became false
