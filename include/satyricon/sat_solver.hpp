@@ -11,6 +11,8 @@
 
 namespace Satyricon {
 
+class Clause;
+
 typedef int var;
 
 /**
@@ -22,6 +24,7 @@ class SATSolver {
 public:
 
     SATSolver();
+    ~SATSolver();
 
     // TODO: for minisat compatibility, and for problem creation as a library
     //var newVar(); // get a new variable
@@ -31,10 +34,9 @@ public:
     void set_number_of_variable(unsigned int n);
 
     // Add a new clause to the problem. The clause is a list of literal.
-    bool add_clause( const std::vector<Literal>& c );
+    bool add_clause(std::vector<Literal>& c);
 
-    // Solve the problem instance, it return true iff the problem is
-    // satisfiable
+    // Solve the problem instance, return true iff the problem is satisfiable
     bool solve();
 
     // Set the logger
@@ -73,15 +75,14 @@ public:
     void set_learning_increase( double value );
 
 private:
-    // new experimental clause class
-    friend class ClauseCompact;
+    friend class Clause;
+
     // forward declaration of support class Clause
-    class Clause;
 
     // handfull type declaration
-    using ClausePtr = std::shared_ptr<Clause>;
-    using WatchMap = std::unordered_map<Literal,std::vector<ClausePtr >>;
-    using SubsumptionMap = std::unordered_map<Literal,std::vector<ClausePtr >>;
+    using ClausePtr = Clause*;
+    using WatchMap = std::vector<std::vector<ClausePtr> >;
+    using SubsumptionMap = std::vector<std::vector<ClausePtr> >;
 
     // print the search status
     void print_status(unsigned int conflict, unsigned int restart,
@@ -91,7 +92,14 @@ private:
     void build_sat_proof();
 
     // learn the conflict clause
-    bool learn_clause();
+    //bool learn_clause();
+    void learn_clause(std::vector<Literal> & lits);
+
+    bool new_clause(std::vector<Literal> & lits, bool learnt, ClausePtr &c_ref);
+
+    void remove_from_vect( std::vector<ClausePtr> v, ClausePtr c );
+
+    void remove_clause( ClausePtr c );
 
     // get value of a literal
     literal_value get_asigned_value(const Literal & l) const;
@@ -100,14 +108,13 @@ private:
     bool assign(Literal l, ClausePtr c);
 
     // propage the effect of the previous assignment
-    bool propagation();
-
-    // backtrack to a specific level, clear all the value in between
-    void backtrack(int level);
+    ClausePtr propagation();
 
     // analyze a conflict clause and create a new clause to be learned
     // and a proper backtrack level
     int conflict_analysis();
+    void conflict_analysis(ClausePtr conflict,
+            std::vector<Literal> &out_learnt, int &out_btlevel);
 
     // Preprocess the set of clause
     void preprocessing();
@@ -116,6 +123,9 @@ private:
     // interval before restart
     unsigned int next_restart_interval();
     unsigned int new_restart_threshold();
+
+    // decide a literal
+    bool assume( Literal p );
 
     // reduce learned clause. The clauses are sorted by activity,
     // and the lower half are removed execept of clauses that are the
@@ -138,25 +148,25 @@ private:
     std::vector<int> decision_levels;
     std::vector<ClausePtr > antecedents;
 
-    // When a conflict appears, the problematic clause are stored here.
-    // the anaylis build on top of that the new clause to learn.
-    ClausePtr conflict_clause;
-
     // after an assignment is performed, both for decision or unit propagation,
     // the effect of the assignment on the other clause must be propagated
     std::queue<Literal> propagation_queue;
-
-    // store the number of assigned variable, used for stopping the search
-    unsigned int number_of_assigned_variable;
 
     // VSIDS
     VSIDS_Info vsids;
 
     // trial of assignment
-    std::vector<Literal> trial;
+    std::vector<Literal> trail;
+    std::vector<int>  trail_limit;
 
     // current level of research
-    int current_level;
+    inline int current_level() const;
+    void undo_one();
+    void cancel();
+    void cancel_until( int level );
+
+    //number of assinged variable
+    size_t number_of_assigned_variable() const;
 
     // log file
     Utils::Log log;

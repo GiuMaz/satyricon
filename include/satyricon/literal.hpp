@@ -24,9 +24,9 @@ enum literal_value {
 class Literal {
 public:
     // constructor
-    Literal(): value(-1) {}
-    Literal(int _atom, bool _is_negated) :
-        value( _atom + _atom + (int)_is_negated ) {}
+    Literal(int _value, bool _is_negated) :
+        value( _value + _value + (int)_is_negated ) {}
+    Literal(): Literal(-1,false) {}
 
     Literal(const Literal& other) = default;
 
@@ -44,16 +44,16 @@ public:
     bool operator!=(const Literal& rhs) const { return value != rhs.value; }
     // inversion: return a new literal with the same atom value and
     // reversed polarity
-    Literal operator! () { Literal l; l.value = value ^ 1; return l; }
+    Literal operator! () const { Literal l; l.value = value ^ 1; return l; }
 
     // utility print
-    std::string print() const { return std::to_string(value); }
+    std::string print() const { return (sign() ? "-" : "") + std::to_string(var()+1); }
 
 private:
     int value;
 };
 
-static const Literal UNDEF_LIT(-1,true); // undefined literal
+static const Literal UNDEF_LIT; // undefined literal
 
 // usefull print method
 inline std::ostream& operator<<(std::ostream &os, Literal const &l) {

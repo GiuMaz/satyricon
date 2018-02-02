@@ -1,3 +1,4 @@
+/*
 #include <algorithm>
 #include <iostream>
 #include "assert_message.hpp"
@@ -195,3 +196,4 @@ uint64_t SATSolver::Clause::get_signature() const {
 
 } // end namespace Satyricon
 
+*/

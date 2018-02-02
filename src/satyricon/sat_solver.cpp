@@ -23,12 +23,10 @@ SATSolver::SATSolver():
     values(),
     decision_levels(),
     antecedents(),
-    conflict_clause(nullptr),
     propagation_queue(),
-    number_of_assigned_variable(),
     vsids(),
-    trial(),
-    current_level(0),
+    trail(),
+    trail_limit(),
     log(Utils::LOG_NONE),
     model(),
     subsumption(),
@@ -43,6 +41,17 @@ SATSolver::SATSolver():
     percentual_learn_increase(50.0)
 {}
 
+SATSolver::~SATSolver() {
+    log.verbose << "destroy original clauses" << endl;
+    for ( auto &c : clauses )
+        remove_clause(c);
+    log.verbose << "destroy learned clauses, size: " << learned.size() << endl;
+    for ( auto &c : learned ) {
+        log.verbose << "remove " << c->print() << endl;
+        remove_clause(c);
+    }
+}
+
 bool SATSolver::solve() {
     // main method
     log.normal << "begin solve" << endl;
@@ -51,7 +60,7 @@ bool SATSolver::solve() {
     unsigned int conflict_counter = 0;
     unsigned int restart_counter = 0;
     unsigned int learn_limit = static_cast<unsigned int>(
-            static_cast<double>( clauses.size())*initial_learn_mult );
+            static_cast<double>(clauses.size())*initial_learn_mult );
     restart_threshold = new_restart_threshold();
 
     // preprocess
@@ -59,11 +68,11 @@ bool SATSolver::solve() {
 
     while ( true ) { // loop until a solution is found
 
-        log.verbose << "propagate at level " << current_level << endl;
+        log.verbose << "propagate at level " << current_level() << endl;
         // propagate assingment effect
-        bool conflict = propagation();
+        ClausePtr conflict = propagation();
 
-        if ( conflict ) {
+        if ( conflict != nullptr ) {
 
             conflict_counter++;
             // print update info every 1000s conflict
@@ -72,7 +81,7 @@ bool SATSolver::solve() {
 
             // if a conflict is found on level 0, it is impossible to solve
             // so the formula must be unsatisfiable
-            if ( current_level == 0 ) {
+            if ( current_level() == 0 ) {
                 log.verbose << "conflict at level 0, build unsat proof\n";
                 print_status(conflict_counter,restart_counter, learn_limit);
                 return false; // UNSAT
@@ -80,10 +89,12 @@ bool SATSolver::solve() {
 
             // otherwise, analize the conflict and backtrack
 
-            auto backtrack_level  = conflict_analysis();
+            int backtrack_level;
+            vector<Literal> conflict_literals;
+            conflict_analysis(conflict, conflict_literals,backtrack_level);
 
-            backtrack( backtrack_level );
-            learn_clause(); // learn the conflcit clause
+            cancel_until( backtrack_level );
+            learn_clause(conflict_literals); // learn the conflcit clause
 
             // after a conflict, the activity of literals and clauses decay
             vsids.decay();
@@ -93,7 +104,7 @@ bool SATSolver::solve() {
             // no conflict and no more value to propagate
 
             // if all variables are asigned, the problem is satisfiable
-            if ( number_of_assigned_variable == number_of_variable ) {
+            if ( number_of_assigned_variable() == number_of_variable ) {
                 log.verbose << "assinged all literals without conflict\n";
                 build_sat_proof();
                 print_status(conflict_counter,restart_counter, learn_limit);
@@ -103,14 +114,17 @@ bool SATSolver::solve() {
             // if the learning limit is reached, the learned clause must
             // be reduced, the new learning limit is now higher
             if ( enable_deletion && learned.size() >= learn_limit ) {
+                /*
                 // cast for suppres warning
                 learn_limit += static_cast<unsigned int>(
                         (learn_limit*percentual_learn_increase)/100.0);
 
                 reduce_learned();
+                */
             }
 
             if ( enable_restart && conflict_counter >= restart_threshold ) {
+            /*
                 // if the restart limit is reached, bactrack to level zero
                 // and select the new threshold for the restart process
                 restart_counter++;
@@ -118,17 +132,43 @@ bool SATSolver::solve() {
                 log.verbose << "restarting." <<
                     "next restart at " << restart_threshold << endl;
                 backtrack(0);
+            */
             }
             else {
                 // otherwise open a new decision level and decide a new literal
                 // based on the vsids heuristic
-                current_level++;
                 Literal l = vsids.select_new(values);
                 log.verbose << "decide literal " << l << endl;
-                assign( l, nullptr ); // assign the decision
+                assume(l);
             }
         }
     }
+}
+
+
+bool SATSolver::assume( Literal p ) {
+    assert_message( get_asigned_value(p) == LIT_UNASIGNED,
+            "deciding an already assigned literal");
+    trail_limit.push_back(static_cast<int>(trail.size()));
+    return assign(p, nullptr);
+}
+
+void SATSolver::cancel() {
+    int i = static_cast<int>(trail.size()) - trail_limit.back();
+    for (; i != 0; i--)
+        undo_one();
+    trail_limit.pop_back();
+}
+
+inline int SATSolver::current_level() const {
+    return static_cast<int>(trail_limit.size());
+}
+
+void SATSolver::cancel_until( int level ) {
+    log.verbose << "backtrack from " << current_level() <<
+        " to " << level << endl;
+    while ( current_level() > level )
+        cancel();
 }
 
 void SATSolver::print_status(unsigned int conflict, unsigned int restart,
@@ -196,17 +236,16 @@ bool SATSolver::assign(Literal l, ClausePtr antecedent) {
         return true; // conflict!
 
     log.verbose << "\tassign literal " << l <<
-        ",  level " << current_level << ", antecedent " <<
+        ",  level " << current_level() << ", antecedent " <<
         (antecedent == nullptr ? "NONE" : antecedent->print() ) << endl;
 
     // unassigned, update asignment
-    ++number_of_assigned_variable;
     values[l.var()] = l.sign() ? LIT_FALSE : LIT_TRUE;
-    decision_levels[l.var()] = current_level;
+    decision_levels[l.var()] = current_level();
     antecedents[l.var()] = antecedent;
 
     // save the current decision, for eventual backtrack
-    trial.push_back(l);
+    trail.push_back(l);
 
     // the assignment effect must propagate
     propagation_queue.push(l);
@@ -214,7 +253,11 @@ bool SATSolver::assign(Literal l, ClausePtr antecedent) {
     return false; // no conflict found
 }
 
-bool SATSolver::propagation() {
+size_t SATSolver::number_of_assigned_variable() const {
+    return trail.size();
+}
+
+SATSolver::ClausePtr SATSolver::propagation() {
     while ( ! propagation_queue.empty() ) {
         // fetch an element from the queue
         auto l = propagation_queue.front(); propagation_queue.pop();
@@ -224,176 +267,188 @@ bool SATSolver::propagation() {
         // (they are false now, their watcher must be moved)
         auto failed = !l;
         vector<ClausePtr> to_move;
-        swap(to_move,watch_list[failed]);
+        swap(to_move,watch_list[failed.index()]);
 
         for (auto it = to_move.begin(); it != to_move.end(); ++it) {
 
             // propagate on a clause
-            bool conflict = (*it)->propagate(failed);
+            bool conflict = (*it)->propagate(*this,failed);
             if ( ! conflict ) continue; // no problem, move to the next
 
             // conflict found in propagation 
             log.verbose << "\tfound a conflict on " << (*it)->print() << endl;
-
-            // initialize the conflict clause
-            conflict_clause = (*it);
+            ClausePtr conflict_clause = *it;
 
             // reset the other literal to move (it is already set by propagate)
-            copy(++it, to_move.end(), back_inserter(watch_list[failed]));
+            copy(++it, to_move.end(), back_inserter(watch_list[failed.index()]));
 
             // clear the propagation
             queue<Literal>().swap(propagation_queue);
-            return true; // conflict
+            return conflict_clause;
         }
     }
-    return false; // no conflict
+    return nullptr; // no conflict
 }
 
-int SATSolver::conflict_analysis() {
-    log.verbose << "learning new clausole from " <<
-        conflict_clause->print() << endl;
+void SATSolver::conflict_analysis(ClausePtr conflict, vector<Literal> &out_learnt, int &out_btlevel) {
+    assert_message(out_learnt.empty(), "out_learnt must be empty");
+    vector<bool> seen(number_of_variable, false);
+    int counter = 0;
+    Literal p = UNDEF_LIT;
+    vector<Literal> p_reason;
 
-    // count how many variables are assigned on the current level.
-    int this_level = 0;
-    for ( const auto& l : *conflict_clause )
-        if ( decision_levels[l.var()] == current_level )
-            ++this_level;
+    out_btlevel = 0;
+    // free space for assertion literal
+    out_learnt.push_back(Literal());
 
-    conflict_clause->update_activity();
+    do {
+        p_reason.clear();
+        conflict->calcReason(*this, p, p_reason);
 
-    // build the conflict clause
-    for(auto it = trial.rbegin(); it != trial.rend() && this_level >= 2; ++it) {
-
-        // search for the literal with inverse polarity, skip if missing
-        if (find(conflict_clause->begin(), conflict_clause->end(),
-                    !(*it)) == conflict_clause->end())
-            continue; // nothing to resolve
-
-        // resolution process
-        log.verbose << "\tresolve " << conflict_clause->print() <<
-            " and " << antecedents[it->var()]->print();
-
-        // decrease the counter, a literal of the current level is removed
-        this_level--;
-
-        // increase activity of antecedent
-        antecedents[ it->var() ]->update_activity();
-
-        std::vector<Literal> new_lit; // literals of the new clause
-        // put everything except the resolved literal
-        for ( const auto& l : *conflict_clause )
-            if ( l != !(*it) ) new_lit.push_back(l);
-
-        for ( auto l : *(antecedents[ it->var() ]) ) {
-            if (l == *it) continue; // no resolved literal
-            if (find(new_lit.begin(),new_lit.end(),l) != new_lit.end())
-                continue; // no duplicates
-            // add all the other
-            new_lit.push_back(l);
-            // if this is also decided at this level, increase the counter
-            if ( decision_levels[l.var()] == current_level) this_level++;
+        // trace reason of P
+        for ( const auto &q : p_reason ) {
+            if ( ! seen[q.var()] ) {
+                seen[q.var()] = true;
+                if ( decision_levels[q.var()] == current_level() )
+                    ++counter;
+                else if ( decision_levels[q.var()] > 0 ) {
+                    out_learnt.push_back(!q);
+                    out_btlevel = std::max(out_btlevel, decision_levels[q.var()]);
+                }
+            }
         }
-
-        // sort by decreasing level, so the assertions literals are in
-        // the beginning. It's usefull also for the backjump
-        sort(new_lit.begin(),new_lit.end(),
-                [&](const Literal& l, const Literal& r) {
-                    return decision_levels[l.var()] > decision_levels[r.var()];});
-
-        log.verbose << " -> "  << new_lit << endl;
-        // build the learned clause
-        auto new_ptr = std::make_shared<Clause>(*this,new_lit, true);
-
-        conflict_clause = new_ptr;
-    }
-
-    // the conflict clause is an assertion clause, with the literal ordered by
-    // level. So the litteral in position 0 is in the conflict level, and the
-    // second one have the level of the backjump
-    if (conflict_clause->size() > 1)
-        return decision_levels[conflict_clause->at(1).var()];
-
-    return 0;
+        do {
+            p = trail.back();
+            conflict = antecedents[p.var()];
+            undo_one();
+        } while ( ! seen[p.var()] );
+        --counter;
+    } while ( counter > 0 );
+    out_learnt[0] = !p;
 }
 
-bool SATSolver::learn_clause() {
+void SATSolver::undo_one() {
+    Literal p = trail.back();
+    values[p.var()] = LIT_UNASIGNED;
+    antecedents[p.var()] = nullptr;
+    decision_levels[p.var()]  = -1;
+    trail.pop_back();
+}
 
-    // learn the conflict clause
-    assert_message( conflict_clause != nullptr, "no conflict clause");
-    learned.push_back(conflict_clause);
-    learned.back()->initialize_structure();
+bool SATSolver::new_clause(vector<Literal> & c, bool learnt, ClausePtr &c_ref) {
 
-    // increase activity for all the literals inside the new clause
-    for ( const auto& l : *conflict_clause ) vsids.update(l);
+    c_ref = nullptr;
 
-    // increase activity of conflict clause
-    conflict_clause->update_activity();
-
-    // search the assertion literal (the only unsasigned literal after backjump)
-    for ( const auto& l : *conflict_clause ) {
-        if ( get_asigned_value(l) == LIT_UNASIGNED ) {
-            // assign the assertion literal, the conflict clause is a unit
-            assign( l, learned.back());
-            break;
+    if ( ! learnt ) { // simplify if possible, learned clause doesn't need this
+        size_t j = 0;
+        for ( size_t i = 0; i < c.size(); i++ ) {
+            // discard false literal
+            if ( get_asigned_value( c[i] ) == LIT_FALSE ) continue;
+            // already satisfied?
+            if ( get_asigned_value( c[i] ) == LIT_TRUE  )
+                return false; // no conflict, new clause is a nullptr
+            // look for tautology or repetition
+            bool add = true;
+            for ( size_t k = i+1; k < c.size(); ++k ) {
+                if ( c[k] == c[i] ) { // repetition?
+                    add = false;      // don't add the repeated literal
+                    break;
+                }
+                if ( c[k] == !(c[i]) ) // tautology?
+                    return false; // no conflict, new clause is a nullptr 
+            }
+            if ( add ) c[j++] = c[i];
         }
-    }
-
-    conflict_clause = nullptr; // reset conflict clause
-
-    return false; // no conflict
-}
-
-bool SATSolver::add_clause( const std::vector<Literal>& c ) {
-    vector<Literal> new_c;
-
-    // remove repetition
-    for ( const auto& l : c ) {
-        if ( find(new_c.begin(),new_c.end(),l) == new_c.end())
-            new_c.push_back(l);
+        c.resize(j);
     }
 
     // an empty clause is a conflict
-    if (new_c.empty()) return true; // conflict
+    if (c.empty()) return true; // conflict, cnew clause is a nullptr
 
-    // add the new clause to the problem
-    clauses.push_back(std::make_shared<SATSolver::Clause>(*this, new_c,false));
-    clauses.back()->initialize_structure();
+    // a clause with 1 literal is a unit, simply assign it
+    if ( c.size() == 1 ) {
+        // true if the assignment is in conflict, false otherwise
+        // the new clause is a nullptr (don't build clause of one literal)
+        return  assign( c[0], nullptr );
+    }
+
+    // build the clause
+    c_ref = Clause::allocate(c,learnt);
 
     // initialize vsids info
-    for ( const auto& l : new_c ) vsids.update(l);
+    for ( const auto& l : c ) vsids.update(l);
 
-    if ( new_c.size() == 1 ) {
-        // is unit, assign the value immediately, it can result in a conflict
-        // if two opposite literals appears in the original formula
-        bool conflict = assign( new_c[0], clauses.back());
-        if ( conflict ) return true; // conflict
+
+    if ( learnt ) { 
+        // pick a correct second literal to watch
+        auto second = c_ref->begin()+1;
+        for ( auto it = c_ref->begin()+2; it != c_ref->end(); ++it)
+            if ( decision_levels[it->var()] > decision_levels[second->var()] )
+                second = it;
+        // swap
+        Literal tmp = *second;
+        *second = c_ref->at(1);
+        c_ref->at(1) = tmp;
+
+        // increase activity
+        c_ref->update_activity( *this );
+    }
+
+    //  add to the watch list
+    watch_list[c[0].index()].push_back(c_ref);
+    watch_list[c[1].index()].push_back(c_ref);
+
+    if ( ! learnt ) { // put every litteral in the subsumption queue
+        for ( const auto& l : c )
+            subsumption[l.index()].push_back(c_ref);
     }
 
     return false; // no conflict
 }
 
-void SATSolver::backtrack(int backtrack_level) {
-    assert_message(backtrack_level <= current_level,
-            "impossible to backtrack forward");
-    log.verbose << "bactrack to level " << backtrack_level <<
-        " from " << current_level << endl;
+bool SATSolver::add_clause(std::vector<Literal>& lits) {
+    // build the new clause
+    ClausePtr clause;
+    bool conflict = new_clause(lits, false, clause);
+    // if the clause is a conflict, return immediatly
+    if ( conflict ) return true; // conflict
+    // clause is nullptr if the new clause is a unit
+    if ( clause != nullptr ) clauses.push_back(clause);
+    return false; // no conflict
+}
 
-    // TODO: rincontrollare la logica di questo, da problemi di segno
-    for ( int i = trial.size()-1; i >= 0; --i) {
-        // end if the required level is reached
-        if (decision_levels[trial[i].var()] <= backtrack_level) break;
+void SATSolver::learn_clause(std::vector<Literal> & lits) {
+    log.verbose << "learn clause " << lits << endl;
+    // build the new clause, it's never a conflict if the clause is learned
+    ClausePtr clause;
+    new_clause(lits, true, clause);
+    // the learned clause is always a unit, with the unasigned literal in 0
+    assign(lits[0],clause);
+    // if the clause have only one literal, don't add that to the list
+    if ( clause != nullptr ) learned.push_back(clause);
+}
 
-        // otherwise keep unasigning the assigned value
-        log.verbose << "\tunassign " << trial[i] << endl;
-        values[trial[i].var()] = LIT_UNASIGNED;
-        decision_levels[trial[i].var()] = -1;
-        antecedents[trial[i].var()] = nullptr;
-        number_of_assigned_variable--;
-
-        // remove from the trial
-        trial.pop_back();
+void SATSolver::remove_from_vect( std::vector<ClausePtr> v, ClausePtr c ) {
+    for ( auto &i : v ) {
+        if ( i == c ) {
+            i = v.back();
+            v.pop_back();
+            return;
+        }
     }
-    current_level = backtrack_level; // reset the current level
+    assert_message(false, "try to remove a nonexistent object");
+}
+
+void SATSolver::remove_clause( ClausePtr c ) {
+    remove_from_vect( watch_list[c->at(0).index()], c );
+    remove_from_vect( watch_list[c->at(1).index()], c );
+
+    if ( c->is_learned() ) {
+        for ( const auto &i : *c )
+            remove_from_vect( subsumption[i.index()], c );
+    }
+
+    Clause::deallocate( c );
 }
 
 bool SATSolver::subset( const Clause& inner,const Clause& outer) {
@@ -402,13 +457,14 @@ bool SATSolver::subset( const Clause& inner,const Clause& outer) {
 
     // more expansive but precise inclusion check
     for ( const auto& l : inner )
-        if ( find(outer.begin(), outer.end(), l) == outer.end() )
+        if ( std::find(outer.begin(), outer.end(), l) == outer.end() )
             return false;
 
     return true;
 }
 
 void SATSolver::preprocessing() {
+    /*
     log.normal << "preprocessing " << clauses.size() << " clauses\n";
 
     // collect clause to eliminate
@@ -420,12 +476,12 @@ void SATSolver::preprocessing() {
 
         // find the literal with the minimum number of neighbourns, it's the
         // cheaper to iterate.
-        auto min_lit = min_element(c->begin(),c->end(),
+        auto min_lit = std::min_element(c->begin(),c->end(),
                 [&](const Literal& i, const Literal& j)
-                {return subsumption[i].size() < subsumption[j].size();});
+                {return subsumption[i.index()].size() < subsumption[j.index()].size();});
 
         // iterate all the clause that contain a compatible literal.
-        for ( const auto& o : subsumption[*min_lit] ) {
+        for ( const auto& o : subsumption[min_lit->index()] ) {
             if ( o != c && c->size() <= o->size() && subset(*c,*o) ) {
                 // if is possible to subsume a clause, put it inside the set
                 log.verbose << "\tsubsume " << o->print() <<
@@ -443,6 +499,7 @@ void SATSolver::preprocessing() {
         if ( to_remove.find(c) == to_remove.end() )
             new_clauses.push_back(c);
     swap(clauses,new_clauses);
+    */
 }
 
 void SATSolver::clause_activity_decay() {
@@ -450,7 +507,7 @@ void SATSolver::clause_activity_decay() {
     // if big value is reached, a normalization is required
     if ( clause_activity_update > 1e100 ) {
         for ( auto & c : learned )
-            c->activity/=clause_activity_update;
+            c->renormalize_activity(*this);
         clause_activity_update = 1.0;
     }
 
@@ -458,11 +515,12 @@ void SATSolver::clause_activity_decay() {
 }
 
 void SATSolver::reduce_learned() {
+    /*
     size_t i = 0, j = 0; // use this indices to compact the vector
     // sort learned clause by activity (in ascending order)
     sort(learned.begin(), learned.end(),
             [&](const ClausePtr& l, const ClausePtr& r)
-                { return l->activity < r->activity; });
+                { return l->get_activity() < r->get_activity(); });
 
     // delete the first half of the clauses, exept clauses that are
     // the antecedent of some assigned literal
@@ -476,7 +534,7 @@ void SATSolver::reduce_learned() {
         if ( not_removable.find(learned[i]) != not_removable.end() )
             learned[j++] = learned[i]; // keep the justification
         else
-            learned[i]->remove(); // remove from watch list
+            Clause::deallocate(learned[i]); // TODO: ricontrolla
     }
 
     // move the second half in the first half (this effectively delete the
@@ -485,24 +543,22 @@ void SATSolver::reduce_learned() {
 
     // keep only the most active clause
     learned.resize( j );
+    */
 }
 
 void SATSolver::set_number_of_variable(unsigned int n) {
     // right now, it is possible to set the number of variable only one time
     if ( number_of_variable != 0 )
-        throw std::runtime_error("multiple resize not supported");
+        throw std::runtime_error("multiple resize not supported yet");
 
     number_of_variable = n;
 
-    for ( int i = 0; i < n; ++i) {
-        watch_list[Literal(i,true)];
-        watch_list[Literal(i,false)];
-    }
+    watch_list.resize( 2 * number_of_variable );
+    subsumption.resize( 2 * number_of_variable );
 
     values.resize(n,LIT_UNASIGNED);
     decision_levels.resize(n,-1);
     antecedents.resize(n,nullptr);
-    conflict_clause = nullptr;
     vsids.set_size(n);
 }
 

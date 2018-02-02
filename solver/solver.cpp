@@ -228,13 +228,13 @@ int main(int argc, char* argv[])
         cout << "Error parsing the file: " << e.what() << endl;
         return 1;
     }
-
     // set options in solver
 
     // disable features
-    if ( no_preproc  ) solver.set_preprocessing(false);
-    if ( no_restart  ) solver.set_restart(false);
-    if ( no_deletion ) solver.set_deletion(false);
+    // FIXME: all message disabled for testing!
+    if ( ! no_preproc  ) solver.set_preprocessing(false);
+    if ( ! no_restart  ) solver.set_restart(false);
+    if ( ! no_deletion ) solver.set_deletion(false);
     
     // decaying factor
     solver.set_clause_decay(decay_clauses_factor);

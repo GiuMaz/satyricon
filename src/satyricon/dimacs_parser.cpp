@@ -45,7 +45,7 @@ bool Satyricon::parse_file(SATSolver& solver, std::istream & is)
         while( !iss.eof() ) {
             if ( !(iss >> value) )
                 throw std::domain_error("invalid simbol on clausole " + line);
-            if(abs(value) > number_of_variable)
+            if(static_cast<unsigned int>(abs(value)) > number_of_variable)
                 throw std::domain_error(std::string("invalid variable ")+std::to_string(value));
 
             if (value == 0) {
