@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
             to_string(restart_interval_multiplier)+")", {"b","restart-mult"});
 
     // clause deletion policy
-    double initial_learn_mult = 2.0, percentual_learn_increase = 50.0;
+    double initial_learn_mult = 0.5, percentual_learn_increase = 10.0;
     auto& learn_mult = parser.make_option<double>("learn multiplier",
             "initial learn limit, is a multiple of the clauses in "
             " the formula (default "+ to_string(initial_learn_mult)+"x)",
@@ -229,10 +229,9 @@ int main(int argc, char* argv[])
     // set options in solver
 
     // disable features
-    // FIXME: all message disabled for testing!
-    if ( ! no_preproc  ) solver.set_preprocessing(false);
+    if ( no_preproc  ) solver.set_preprocessing(false);
     if ( no_restart  ) solver.set_restart(false);
-    if ( ! no_deletion ) solver.set_deletion(false);
+    if ( no_deletion ) solver.set_deletion(false);
     
     // decaying factor
     solver.set_clause_decay(decay_clauses_factor);

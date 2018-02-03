@@ -17,16 +17,16 @@ namespace Satyricon {
  * utility printing macro
  */
 #ifndef NDEBUG
-#define PRINT_VERBOSE(X)         \
-if ( log_level >= 2 ) {          \
+#define PRINT_VERBOSE(X)          \
+if ( log_level >= 2 ) {           \
     std::cout << X;  /* NOLINT */ \
 }
 #else
 #define PRINT_VERBOSE(X) {}
 #endif
 
-#define PRINT(X)                  \
-if ( log_level >= 1 ) {           \
+#define PRINT(X)                   \
+if ( log_level >= 1 ) {            \
     std::cout << X;   /* NOLINT */ \
 }
 
@@ -87,9 +87,6 @@ bool SATSolver::solve() {
         if ( conflict != nullptr ) {
 
             conflict_counter++;
-            // print update info every 1000s conflict
-            if ( conflict_counter % 1000 == 0 )
-                print_status(conflict_counter,restart_counter, learn_limit);
 
             // if a conflict is found on level 0, it is impossible to solve
             // so the formula must be unsatisfiable
@@ -126,13 +123,14 @@ bool SATSolver::solve() {
             // if the learning limit is reached, the learned clause must
             // be reduced, the new learning limit is now higher
             if ( enable_deletion && learned.size() >= learn_limit ) {
-                /*
+
+                print_status(conflict_counter,restart_counter, learn_limit);
+
                 // cast for suppres warning
                 learn_limit += static_cast<unsigned int>(
                         (learn_limit*percentual_learn_increase)/100.0);
 
                 reduce_learned();
-                */
             }
 
             if ( enable_restart && conflict_counter >= restart_threshold ) {
@@ -525,26 +523,18 @@ void SATSolver::clause_activity_decay() {
 }
 
 void SATSolver::reduce_learned() {
-    /*
     size_t i = 0, j = 0; // use this indices to compact the vector
     // sort learned clause by activity (in ascending order)
     sort(learned.begin(), learned.end(),
             [&](const ClausePtr& l, const ClausePtr& r)
                 { return l->get_activity() < r->get_activity(); });
 
-    // delete the first half of the clauses, exept clauses that are
-    // the antecedent of some assigned literal
-    set<ClausePtr > not_removable;
-    for ( const auto& c : antecedents ) 
-        if ( c != nullptr && c->is_learned() )
-            not_removable.insert(c);
-
     // remove the first half
     for ( ; i < learned.size()/2 ; ++i ) {
-        if ( not_removable.find(learned[i]) != not_removable.end() )
+        if ( learned[i]->locked(*this) )
             learned[j++] = learned[i]; // keep the justification
         else
-            Clause::deallocate(learned[i]); // TODO: ricontrolla
+            remove_clause(learned[i]);
     }
 
     // move the second half in the first half (this effectively delete the
@@ -553,7 +543,6 @@ void SATSolver::reduce_learned() {
 
     // keep only the most active clause
     learned.resize( j );
-    */
 }
 
 void SATSolver::set_number_of_variable(unsigned int n) {

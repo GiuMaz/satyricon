@@ -56,12 +56,12 @@ public:
     static void deallocate(Clause* &c) {
         assert_message( c != nullptr, "freeing a null pointer");
         c->~Clause();
-        free(c);
+        free((void*)c);
         c = nullptr;
     }
     
     bool locked ( const SATSolver &s ) {
-        return s.antecedents[begin()->index()] == this;
+        return s.antecedents[at(0).var()] == this;
     }
 
     uint64_t size() const { return _size; }
@@ -83,11 +83,11 @@ public:
     }
 
     void update_activity(const SATSolver& s) {
-            activity+=s.clause_activity_update;
+        activity+=s.clause_activity_update;
     }
 
     void renormalize_activity(const SATSolver& s) {
-            activity/=s.clause_activity_update;
+        activity/=s.clause_activity_update;
     }
 
     bool simplify( const SATSolver &s ) {
