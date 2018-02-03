@@ -335,7 +335,7 @@ void SATSolver::undo_one() {
     trail.pop_back();
 }
 
-bool SATSolver::new_clause(vector<Literal> & c, bool learnt, ClausePtr &c_ref) {
+bool SATSolver::new_clause(vector<Literal> &c, bool learnt, ClausePtr &c_ref) {
 
     c_ref = nullptr;
 
@@ -395,8 +395,8 @@ bool SATSolver::new_clause(vector<Literal> & c, bool learnt, ClausePtr &c_ref) {
     }
 
     //  add to the watch list
-    watch_list[c[0].index()].push_back(c_ref);
-    watch_list[c[1].index()].push_back(c_ref);
+    watch_list[c_ref->at(0).index()].push_back(c_ref);
+    watch_list[c_ref->at(1).index()].push_back(c_ref);
 
     if ( ! learnt ) { // put every litteral in the subsumption queue
         for ( const auto& l : c )
@@ -424,11 +424,12 @@ void SATSolver::learn_clause(std::vector<Literal> & lits) {
     new_clause(lits, true, clause);
     // the learned clause is always a unit, with the unasigned literal in 0
     assign(lits[0],clause);
+    log.verbose << "address " << clause << std::endl;
     // if the clause have only one literal, don't add that to the list
     if ( clause != nullptr ) learned.push_back(clause);
 }
 
-void SATSolver::remove_from_vect( std::vector<ClausePtr> v, ClausePtr c ) {
+void SATSolver::remove_from_vect( std::vector<ClausePtr> &v, ClausePtr c ) {
     for ( auto &i : v ) {
         if ( i == c ) {
             i = v.back();
@@ -443,7 +444,7 @@ void SATSolver::remove_clause( ClausePtr c ) {
     remove_from_vect( watch_list[c->at(0).index()], c );
     remove_from_vect( watch_list[c->at(1).index()], c );
 
-    if ( c->is_learned() ) {
+    if ( !c->is_learned() ) {
         for ( const auto &i : *c )
             remove_from_vect( subsumption[i.index()], c );
     }

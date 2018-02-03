@@ -49,6 +49,7 @@ public:
             bool learned = false) {
         auto size = sizeof(Clause) + sizeof(Literal)*lits.size();
         void* memory =  malloc(size);
+        assert_message( memory != nullptr, "out of memory");
         return new (memory) Clause(learned,lits);
     }
 
@@ -138,7 +139,8 @@ public:
     bool propagate ( SATSolver &s, Literal l ) {
 
         // make sure the false literal is in position 1
-        if ( at(1) != l ) { at(0) = at(1); at(1) = l; }
+        assert_message( at(0) == l || at(1) == l, "moving a non watched");
+        if ( at(0) == l ) { at(0) = at(1); at(1) = l; }
 
         // if the clause is already solved, nothing need to be moved
         if (s.get_asigned_value(at(0)) == LIT_TRUE) {

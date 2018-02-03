@@ -35,13 +35,12 @@ public:
     bool sign() const { return value & 1; }
     unsigned int var() const   { return (unsigned int) value >> 1; }
     unsigned int index() const { return (unsigned int) value; }
-    int opposite_index() const { return value ^ 1; }
 
     // assignment
     Literal& operator=(const Literal& other) = default;
     // comparison operator
-    bool operator==(const Literal& rhs) const { return value == rhs.value; }
-    bool operator!=(const Literal& rhs) const { return value != rhs.value; }
+    bool operator==(const Literal& rhs) const { return this->value == rhs.value; }
+    bool operator!=(const Literal& rhs) const { return this->value != rhs.value; }
     // inversion: return a new literal with the same atom value and
     // reversed polarity
     Literal operator! () const { Literal l; l.value = value ^ 1; return l; }
@@ -77,18 +76,5 @@ inline std::ostream& operator<<(std::ostream &os, std::vector<Literal> const &v)
 }
 
 } // end namespace Satyricon
-
-namespace std {
-
-// support hash class, usefull for unordered_map (hash map)
-template <>
-struct hash<Satyricon::Literal>
-{
-    std::size_t operator()(const Satyricon::Literal& k) const {
-        return (size_t)(k.sign() << 31) + k.var();
-    }
-};
-
-}
 
 #endif

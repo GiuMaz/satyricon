@@ -97,7 +97,7 @@ private:
 
     bool new_clause(std::vector<Literal> & lits, bool learnt, ClausePtr &c_ref);
 
-    void remove_from_vect( std::vector<ClausePtr> v, ClausePtr c );
+    void remove_from_vect( std::vector<ClausePtr> &v, ClausePtr c );
 
     void remove_clause( ClausePtr c );
 
