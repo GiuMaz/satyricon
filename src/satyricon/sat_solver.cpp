@@ -124,15 +124,13 @@ bool SATSolver::solve() {
             }
 
             if ( enable_restart && conflict_counter >= restart_threshold ) {
-            /*
                 // if the restart limit is reached, bactrack to level zero
                 // and select the new threshold for the restart process
                 restart_counter++;
                 restart_threshold += new_restart_threshold();
                 log.verbose << "restarting." <<
                     "next restart at " << restart_threshold << endl;
-                backtrack(0);
-            */
+                cancel_until(0);
             }
             else {
                 // otherwise open a new decision level and decide a new literal

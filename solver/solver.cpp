@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
     // disable features
     // FIXME: all message disabled for testing!
     if ( ! no_preproc  ) solver.set_preprocessing(false);
-    if ( ! no_restart  ) solver.set_restart(false);
+    if ( no_restart  ) solver.set_restart(false);
     if ( ! no_deletion ) solver.set_deletion(false);
     
     // decaying factor
