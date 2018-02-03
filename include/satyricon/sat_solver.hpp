@@ -6,7 +6,6 @@
 #include <memory>
 #include <unordered_map>
 #include "literal.hpp"
-#include "log.hpp"
 #include "vsids.hpp"
 
 namespace Satyricon {
@@ -40,7 +39,7 @@ public:
     bool solve();
 
     // Set the logger
-    void set_log( Utils::Log l );
+    void set_log( int level );
 
     // if the formula is satisfiable, return the model
     const std::vector<int>& get_model();
@@ -169,7 +168,7 @@ private:
     size_t number_of_assigned_variable() const;
 
     // log file
-    Utils::Log log;
+    int log_level;
 
     // if the clause is sat, this vector contein a model for the solution
     std::vector<int> model;

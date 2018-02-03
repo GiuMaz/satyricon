@@ -8,7 +8,6 @@
 #include "ArgumentParser.hpp"
 #include "dimacs_parser.hpp"
 #include "literal.hpp"
-#include "log.hpp"
 #include "sat_solver.hpp"
 
 using std::exception;
@@ -202,8 +201,7 @@ int main(int argc, char* argv[])
     // SOLVER
 
     Satyricon::SATSolver solver;
-    Utils::Log log(verbose ? Utils::LOG_VERBOSE : Utils::LOG_NORMAL);
-    solver.set_log(log);
+    solver.set_log(verbose ? 2 : 1);
 
     start = std::chrono::steady_clock::now();
 
@@ -214,13 +212,13 @@ int main(int argc, char* argv[])
         // get initilization time
         auto init_time = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed = init_time - start;
-        log.normal << "read file and initialized solver in: " <<
+        std::cout << "read file and initialized solver in: " <<
             std::fixed << std::setprecision(2) << elapsed.count() << "s\n";
 
         // if found a conflict at level zero, report the conflict
         if ( conflict ) {
-            log.verbose << "found a conflict during solver construction\n";
-            log.normal << "UNSATISFIABLE" << endl;
+            std::cout << "found a conflict during solver construction\n";
+            std::cout << "UNSATISFIABLE" << endl;
             return 0;
         }
     }
@@ -253,13 +251,13 @@ int main(int argc, char* argv[])
     // print exec time
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = end_time - start;
-    log.normal << "completed in: " << std::fixed << std::setprecision(2) <<
+    std::cout << "completed in: " << std::fixed << std::setprecision(2) <<
         elapsed.count() << "s\n";
 
     // print result
-    log.normal << (satisfiable ? "SATISFIABLE" : "UNSATISFIABLE") << endl;
+    std::cout << (satisfiable ? "SATISFIABLE" : "UNSATISFIABLE") << endl;
     if ( print_proof && satisfiable )
-        log.normal << "Model: " << endl << solver.string_model() << endl;
+        std::cout << "Model: " << endl << solver.string_model() << endl;
 
     return 0;
 }

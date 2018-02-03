@@ -5,7 +5,6 @@
 #include <iomanip>
 #include "assert_message.hpp"
 #include "clause.hpp"
-#include "log.hpp"
 #include "sat_solver.hpp"
 #include "vsids.hpp"
 
@@ -13,6 +12,23 @@ using std::endl; using std::setw;
 using std::vector; using std::string; using std::queue; using std::set;
 
 namespace Satyricon {
+
+/*
+ * utility printing macro
+ */
+#ifndef NDEBUG
+#define PRINT_VERBOSE(X)         \
+if ( log_level >= 2 ) {          \
+    std::cout << X;  /* NOLINT */ \
+}
+#else
+#define PRINT_VERBOSE(X) {}
+#endif
+
+#define PRINT(X)                  \
+if ( log_level >= 1 ) {           \
+    std::cout << X;   /* NOLINT */ \
+}
 
 // defualt constructor
 SATSolver::SATSolver():
@@ -27,7 +43,7 @@ SATSolver::SATSolver():
     vsids(),
     trail(),
     trail_limit(),
-    log(Utils::LOG_NONE),
+    log_level(1),
     model(),
     subsumption(),
     enable_preprocessing(true),
@@ -42,19 +58,15 @@ SATSolver::SATSolver():
 {}
 
 SATSolver::~SATSolver() {
-    log.verbose << "destroy original clauses" << endl;
     for ( auto &c : clauses )
         remove_clause(c);
-    log.verbose << "destroy learned clauses, size: " << learned.size() << endl;
-    for ( auto &c : learned ) {
-        log.verbose << "remove " << c->print() << endl;
+    for ( auto &c : learned )
         remove_clause(c);
-    }
 }
 
 bool SATSolver::solve() {
     // main method
-    log.normal << "begin solve" << endl;
+    PRINT("begin solve" << endl);
 
     // initialize search parameter
     unsigned int conflict_counter = 0;
@@ -68,7 +80,7 @@ bool SATSolver::solve() {
 
     while ( true ) { // loop until a solution is found
 
-        log.verbose << "propagate at level " << current_level() << endl;
+        PRINT_VERBOSE("propagate at level " << current_level());
         // propagate assingment effect
         ClausePtr conflict = propagation();
 
@@ -82,7 +94,7 @@ bool SATSolver::solve() {
             // if a conflict is found on level 0, it is impossible to solve
             // so the formula must be unsatisfiable
             if ( current_level() == 0 ) {
-                log.verbose << "conflict at level 0, build unsat proof\n";
+                PRINT_VERBOSE("conflict at level 0, build unsat proof" << endl);
                 print_status(conflict_counter,restart_counter, learn_limit);
                 return false; // UNSAT
             }
@@ -105,7 +117,7 @@ bool SATSolver::solve() {
 
             // if all variables are asigned, the problem is satisfiable
             if ( number_of_assigned_variable() == number_of_variable ) {
-                log.verbose << "assinged all literals without conflict\n";
+                PRINT_VERBOSE("assinged all literals without conflict" << endl);
                 build_sat_proof();
                 print_status(conflict_counter,restart_counter, learn_limit);
                 return true; // SAT
@@ -128,15 +140,15 @@ bool SATSolver::solve() {
                 // and select the new threshold for the restart process
                 restart_counter++;
                 restart_threshold += new_restart_threshold();
-                log.verbose << "restarting." <<
-                    "next restart at " << restart_threshold << endl;
+                PRINT_VERBOSE("restarting."<<"next restart at "<<
+                        restart_threshold<< endl);
                 cancel_until(0);
             }
             else {
                 // otherwise open a new decision level and decide a new literal
                 // based on the vsids heuristic
                 Literal l = vsids.select_new(values);
-                log.verbose << "decide literal " << l << endl;
+                PRINT_VERBOSE("decide literal " << l << endl);
                 assume(l);
             }
         }
@@ -163,20 +175,19 @@ inline int SATSolver::current_level() const {
 }
 
 void SATSolver::cancel_until( int level ) {
-    log.verbose << "backtrack from " << current_level() <<
-        " to " << level << endl;
+    PRINT_VERBOSE("backtrack from " << current_level() << " to " << level << endl);
     while ( current_level() > level )
         cancel();
 }
 
 void SATSolver::print_status(unsigned int conflict, unsigned int restart,
         unsigned int learn_limit) {
-    log.normal << "conflict: " << setw(7) << conflict;
+    PRINT("conflict: " << setw(7) << conflict);
     if ( enable_restart )
-        log.normal << ", restart: " << setw(7) <<  restart;
+        PRINT(", restart: " << setw(7) <<  restart);
     if ( enable_deletion )
-        log.normal << ", learn limit: " << setw(7) <<  learn_limit;
-    log.normal << ", learned: " << setw(7) <<  learned.size() << endl;
+        PRINT(", learn limit: " << setw(7) <<  learn_limit);
+    PRINT(", learned: " << setw(7) <<  learned.size() << endl);
 }
 
 unsigned int SATSolver::next_restart_interval() {
@@ -233,9 +244,9 @@ bool SATSolver::assign(Literal l, ClausePtr antecedent) {
     if ( get_asigned_value(l) == LIT_FALSE )
         return true; // conflict!
 
-    log.verbose << "\tassign literal " << l <<
+    PRINT_VERBOSE("\tassign literal " << l <<
         ",  level " << current_level() << ", antecedent " <<
-        (antecedent == nullptr ? "NONE" : antecedent->print() ) << endl;
+        (antecedent == nullptr ? "NONE" : antecedent->print() ) << endl);
 
     // unassigned, update asignment
     values[l.var()] = l.sign() ? LIT_FALSE : LIT_TRUE;
@@ -259,7 +270,7 @@ SATSolver::ClausePtr SATSolver::propagation() {
     while ( ! propagation_queue.empty() ) {
         // fetch an element from the queue
         auto l = propagation_queue.front(); propagation_queue.pop();
-        log.verbose << "propagate " << l << endl;
+        PRINT_VERBOSE("propagate " << l << endl);
 
         // extract the list of the opposite literal 
         // (they are false now, their watcher must be moved)
@@ -274,7 +285,7 @@ SATSolver::ClausePtr SATSolver::propagation() {
             if ( ! conflict ) continue; // no problem, move to the next
 
             // conflict found in propagation 
-            log.verbose << "\tfound a conflict on " << (*it)->print() << endl;
+            PRINT_VERBOSE("\tfound a conflict on " << (*it)->print() << endl);
             ClausePtr conflict_clause = *it;
 
             // reset the other literal to move (it is already set by propagate)
@@ -416,13 +427,13 @@ bool SATSolver::add_clause(std::vector<Literal>& lits) {
 }
 
 void SATSolver::learn_clause(std::vector<Literal> & lits) {
-    log.verbose << "learn clause " << lits << endl;
+    PRINT_VERBOSE("learn clause " << lits << endl);
     // build the new clause, it's never a conflict if the clause is learned
     ClausePtr clause;
     new_clause(lits, true, clause);
     // the learned clause is always a unit, with the unasigned literal in 0
     assign(lits[0],clause);
-    log.verbose << "address " << clause << std::endl;
+    PRINT_VERBOSE("address " << clause << std::endl);
     // if the clause have only one literal, don't add that to the list
     if ( clause != nullptr ) learned.push_back(clause);
 }
@@ -464,7 +475,7 @@ bool SATSolver::subset( const Clause& inner,const Clause& outer) {
 
 void SATSolver::preprocessing() {
     /*
-    log.normal << "preprocessing " << clauses.size() << " clauses\n";
+    PRINT << "preprocessing " << clauses.size() << " clauses\n";
 
     // collect clause to eliminate
     set<ClausePtr > to_remove;
@@ -483,14 +494,14 @@ void SATSolver::preprocessing() {
         for ( const auto& o : subsumption[min_lit->index()] ) {
             if ( o != c && c->size() <= o->size() && subset(*c,*o) ) {
                 // if is possible to subsume a clause, put it inside the set
-                log.verbose << "\tsubsume " << o->print() <<
+                PRINT_VERBOSE("\tsubsume " << o->print() <<
                     " from " << c->print() << endl;
                 to_remove.insert(o);
             }
         }
     }
 
-    log.normal << "removed " << to_remove.size() << " clauses\n";
+    PRINT << "removed " << to_remove.size() << " clauses\n";
 
     // generate a new clause vector without the subsumed clauses
     vector<ClausePtr > new_clauses;
@@ -561,8 +572,8 @@ void SATSolver::set_number_of_variable(unsigned int n) {
     vsids.set_size(n);
 }
 
-void SATSolver::set_log( Utils::Log l) {
-    log = l;
+void SATSolver::set_log( int l) {
+    log_level = l;
 }
 
 void SATSolver::set_restarting_multiplier(unsigned int b) {
