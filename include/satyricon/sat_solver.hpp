@@ -194,6 +194,12 @@ private:
     // clause deletion policy
     double initial_learn_mult;
     double percentual_learn_increase;
+
+    // support data structure
+    std::vector<Literal> solve_conflict_literals;
+    std::vector<ClausePtr> propagation_to_move;
+    std::vector<bool> analisys_seen;
+    std::vector<Literal> analisys_reason;
 };
 
 } // end namespace Satyricon

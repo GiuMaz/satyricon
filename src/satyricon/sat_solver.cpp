@@ -53,14 +53,16 @@ SATSolver::SATSolver():
     clause_activity_update(1.0),
     clause_decay_factor(1.0 / 0.999),
     initial_learn_mult (2.0),
-    percentual_learn_increase(50.0)
+    percentual_learn_increase(50.0),
+    solve_conflict_literals(),
+    propagation_to_move(),
+    analisys_seen(),
+    analisys_reason()
 {}
 
 SATSolver::~SATSolver() {
-    for ( auto &c : clauses )
-        remove_clause(c);
-    for ( auto &c : learned )
-        remove_clause(c);
+    for ( auto &c : clauses ) remove_clause(c);
+    for ( auto &c : learned ) remove_clause(c);
 }
 
 bool SATSolver::solve() {
@@ -98,11 +100,11 @@ bool SATSolver::solve() {
             // otherwise, analize the conflict and backtrack
 
             int backtrack_level;
-            vector<Literal> conflict_literals;
-            conflict_analysis(conflict, conflict_literals,backtrack_level);
+            solve_conflict_literals.clear();
+            conflict_analysis(conflict,solve_conflict_literals,backtrack_level);
 
             cancel_until( backtrack_level );
-            learn_clause(conflict_literals); // learn the conflcit clause
+            learn_clause(solve_conflict_literals); // learn the conflcit clause
 
             // after a conflict, the activity of literals and clauses decay
             vsids.decay();
@@ -302,10 +304,11 @@ SATSolver::ClausePtr SATSolver::propagation() {
         // extract the list of the opposite literal 
         // (they are false now, their watcher must be moved)
         auto failed = !l;
-        vector<ClausePtr> to_move;
-        swap(to_move,watch_list[failed.index()]);
+        propagation_to_move.clear();
+        swap(propagation_to_move,watch_list[failed.index()]);
 
-        for (auto it = to_move.begin(); it != to_move.end(); ++it) {
+        for (auto it = propagation_to_move.begin();
+                it != propagation_to_move.end(); ++it) {
 
             // propagate on a clause
             bool conflict = (*it)->propagate(*this,failed);
@@ -316,7 +319,7 @@ SATSolver::ClausePtr SATSolver::propagation() {
             ClausePtr conflict_clause = *it;
 
             // reset the other literal to move (it is already set by propagate)
-            copy(++it, to_move.end(), back_inserter(watch_list[failed.index()]));
+            copy(++it, propagation_to_move.end(), back_inserter(watch_list[failed.index()]));
 
             // clear the propagation
             queue<Literal>().swap(propagation_queue);
@@ -328,23 +331,22 @@ SATSolver::ClausePtr SATSolver::propagation() {
 
 void SATSolver::conflict_analysis(ClausePtr conflict, vector<Literal> &out_learnt, int &out_btlevel) {
     assert_message(out_learnt.empty(), "out_learnt must be empty");
-    vector<bool> seen(number_of_variable, false);
+    std::fill(analisys_seen.begin(), analisys_seen.end(),false);
     int counter = 0;
     Literal p = UNDEF_LIT;
-    vector<Literal> p_reason;
 
     out_btlevel = 0;
     // free space for assertion literal
     out_learnt.push_back(Literal());
 
     do {
-        p_reason.clear();
-        conflict->calcReason(*this, p, p_reason);
+        analisys_reason.clear();
+        conflict->calcReason(*this, p, analisys_reason);
 
         // trace reason of P
-        for ( const auto &q : p_reason ) {
-            if ( ! seen[q.var()] ) {
-                seen[q.var()] = true;
+        for ( const auto &q : analisys_reason ) {
+            if ( ! analisys_seen[q.var()] ) {
+                analisys_seen[q.var()] = true;
                 if ( decision_levels[q.var()] == current_level() )
                     ++counter;
                 else if ( decision_levels[q.var()] > 0 ) {
@@ -357,7 +359,7 @@ void SATSolver::conflict_analysis(ClausePtr conflict, vector<Literal> &out_learn
             p = trail.back();
             conflict = antecedents[p.var()];
             undo_one();
-        } while ( ! seen[p.var()] );
+        } while ( ! analisys_seen[p.var()] );
         --counter;
     } while ( counter > 0 );
     out_learnt[0] = !p;
@@ -529,6 +531,7 @@ void SATSolver::set_number_of_variable(unsigned int n) {
     decision_levels.resize(n,-1);
     antecedents.resize(n,nullptr);
     vsids.set_size(n);
+    analisys_seen.resize(n);
 }
 
 void SATSolver::set_log( int l) {
