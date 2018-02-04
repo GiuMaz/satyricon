@@ -2,7 +2,7 @@
 #define SATYRICON_VSIDS_HPP
 
 #include <vector>
-#include "literal.hpp"
+#include "solver_types.hpp"
 
 namespace Satyricon {
 

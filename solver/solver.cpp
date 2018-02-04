@@ -7,7 +7,6 @@
 #include <iostream>
 #include "ArgumentParser.hpp"
 #include "dimacs_parser.hpp"
-#include "literal.hpp"
 #include "sat_solver.hpp"
 
 using std::exception;

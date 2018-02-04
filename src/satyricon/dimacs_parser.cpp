@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include "dimacs_parser.hpp"
-#include "literal.hpp"
+#include "solver_types.hpp"
 #include "sat_solver.hpp"
 
 //using namespace std;

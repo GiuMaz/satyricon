@@ -4,7 +4,6 @@
 #include <tuple>
 #include <iomanip>
 #include "assert_message.hpp"
-#include "clause.hpp"
 #include "sat_solver.hpp"
 #include "vsids.hpp"
 

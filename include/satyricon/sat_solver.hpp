@@ -5,12 +5,10 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
-#include "literal.hpp"
+#include "solver_types.hpp"
 #include "vsids.hpp"
 
 namespace Satyricon {
-
-class Clause;
 
 typedef int var;
 
