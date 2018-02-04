@@ -18,31 +18,16 @@ using ConstIterator = const Literal *;
 
 private:
     // the learned clause need activity, the original need lit_hash
-    union { uint64_t signature; double activity; };
+    double activity;
     bool learned  :  1;
     uint64_t _size : 63;
-
-    // utility function that compute the hash of a literal in range 0..63
-    uint8_t lit_hash( const Literal& l ) {
-        uint8_t body = l.var()%32;
-        uint8_t sign = l.sign() ? 32 : 0 ;
-        assert_message( (sign+body)>=0 && (sign+body)<=63,
-                "literal hash out of bound");
-        return static_cast<uint8_t>(body + sign);
-    }
 
     // not to be used directly, but only with allocate function
     Clause(bool l,const std::vector<Literal> &lits) :
         learned(l), _size(lits.size()) {
             std::copy(lits.begin(),lits.end(),this->begin());
-            if ( learned )
-                activity = 1.0;
-            else {
-                signature = 0;
-                for ( const auto &l : *this )
-                    signature |= (1 << lit_hash(l));
-            }
-    }
+            if ( learned ) activity = 1.0;
+        }
 
 public:
     static Clause* allocate(const std::vector<Literal> &lits,
@@ -70,11 +55,6 @@ public:
         assert_message(is_learned(),"only learned clausole has activity");
         return activity;
     }
-    uint64_t get_signature() const {
-        assert_message(!is_learned(),"learned clausole had no signature");
-        return signature;
-    }
-
     Literal* get_data() {
         return reinterpret_cast<Literal*>(this+1);
     }
@@ -97,12 +77,12 @@ public:
         size_t j = 0;
         for ( const auto & l : *this ) {
             if ( s.get_asigned_value(l) == LIT_TRUE )
-                return true;
+                return true; // useless
             else if ( s.get_asigned_value(l) == LIT_UNASIGNED )
                 at(j++) = l;
         }
         _size = j;
-        return false;
+        return false; // still usefull
     }
 
     Iterator begin() { return get_data(); }

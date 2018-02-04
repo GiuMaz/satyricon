@@ -45,7 +45,6 @@ SATSolver::SATSolver():
     trail_limit(),
     log_level(1),
     model(),
-    subsumption(),
     enable_preprocessing(true),
     enable_restart(true),
     enable_deletion(true),
@@ -80,7 +79,7 @@ bool SATSolver::solve() {
 
     while ( true ) { // loop until a solution is found
 
-        PRINT_VERBOSE("propagate at level " << current_level());
+        PRINT_VERBOSE("propagate at level " << current_level() << endl);
         // propagate assingment effect
         ClausePtr conflict = propagation();
 
@@ -120,6 +119,10 @@ bool SATSolver::solve() {
                 return true; // SAT
             }
 
+            if ( current_level() == 0 ) {
+                simplify_clause();
+            }
+
             // if the learning limit is reached, the learned clause must
             // be reduced, the new learning limit is now higher
             if ( enable_deletion && learned.size() >= learn_limit ) {
@@ -138,21 +141,47 @@ bool SATSolver::solve() {
                 // and select the new threshold for the restart process
                 restart_counter++;
                 restart_threshold += new_restart_threshold();
-                PRINT_VERBOSE("restarting."<<"next restart at "<<
+                PRINT_VERBOSE("restarting. next restart at "<<
                         restart_threshold<< endl);
                 cancel_until(0);
             }
-            else {
-                // otherwise open a new decision level and decide a new literal
-                // based on the vsids heuristic
-                Literal l = vsids.select_new(values);
-                PRINT_VERBOSE("decide literal " << l << endl);
-                assume(l);
-            }
+
+            // open a new decision level and decide a new literal
+            // based on the vsids heuristic
+            Literal l = vsids.select_new(values);
+            PRINT_VERBOSE("decide literal " << l << endl);
+            assume(l);
         }
     }
 }
 
+
+void SATSolver::simplify_clause() {
+
+    PRINT_VERBOSE("simplify original clause" << endl);
+    size_t j = 0;
+    for ( auto & c : clauses ) {
+        if ( c->simplify( *this ) )
+            remove_clause(c);
+        else
+            clauses[j++] = c;
+    }
+    clauses.resize(j);
+
+    j = 0;
+
+    PRINT_VERBOSE("simplify learned clause" << endl);
+    for ( auto & c : learned ) {
+        if ( c->simplify( *this ) )
+            remove_clause(c);
+        else
+            learned[j++] = c;
+    }
+    if ( ( learned.size() - j ) > 0 )
+        PRINT_VERBOSE("eliminated " << (learned.size() - j) << " clauses" << endl);
+
+    learned.resize(j);
+}
 
 bool SATSolver::assume( Literal p ) {
     assert_message( get_asigned_value(p) == LIT_UNASIGNED,
@@ -405,11 +434,6 @@ bool SATSolver::new_clause(vector<Literal> &c, bool learnt, ClausePtr &c_ref) {
     watch_list[c_ref->at(0).index()].push_back(c_ref);
     watch_list[c_ref->at(1).index()].push_back(c_ref);
 
-    if ( ! learnt ) { // put every litteral in the subsumption queue
-        for ( const auto& l : c )
-            subsumption[l.index()].push_back(c_ref);
-    }
-
     return false; // no conflict
 }
 
@@ -436,6 +460,9 @@ void SATSolver::learn_clause(std::vector<Literal> & lits) {
     if ( clause != nullptr ) learned.push_back(clause);
 }
 
+// Nothing for now
+void SATSolver::preprocessing() {}
+
 void SATSolver::remove_from_vect( std::vector<ClausePtr> &v, ClausePtr c ) {
     for ( auto &i : v ) {
         if ( i == c ) {
@@ -444,70 +471,14 @@ void SATSolver::remove_from_vect( std::vector<ClausePtr> &v, ClausePtr c ) {
             return;
         }
     }
-    assert_message(false, "try to remove a nonexistent object");
+    assert_message(false,"removing a nonexistent object object "+c->print());
 }
 
 void SATSolver::remove_clause( ClausePtr c ) {
     remove_from_vect( watch_list[c->at(0).index()], c );
     remove_from_vect( watch_list[c->at(1).index()], c );
 
-    if ( !c->is_learned() ) {
-        for ( const auto &i : *c )
-            remove_from_vect( subsumption[i.index()], c );
-    }
-
     Clause::deallocate( c );
-}
-
-bool SATSolver::subset( const Clause& inner,const Clause& outer) {
-    // prefilter using signature
-    if ( (inner.get_signature() & ~outer.get_signature()) != 0 ) return false;
-
-    // more expansive but precise inclusion check
-    for ( const auto& l : inner )
-        if ( std::find(outer.begin(), outer.end(), l) == outer.end() )
-            return false;
-
-    return true;
-}
-
-void SATSolver::preprocessing() {
-    /*
-    PRINT << "preprocessing " << clauses.size() << " clauses\n";
-
-    // collect clause to eliminate
-    set<ClausePtr > to_remove;
-
-    for ( const auto& c : clauses ) {
-
-        if ( to_remove.find(c) != to_remove.end() ) continue; // already removed
-
-        // find the literal with the minimum number of neighbourns, it's the
-        // cheaper to iterate.
-        auto min_lit = std::min_element(c->begin(),c->end(),
-                [&](const Literal& i, const Literal& j)
-                {return subsumption[i.index()].size() < subsumption[j.index()].size();});
-
-        // iterate all the clause that contain a compatible literal.
-        for ( const auto& o : subsumption[min_lit->index()] ) {
-            if ( o != c && c->size() <= o->size() && subset(*c,*o) ) {
-                // if is possible to subsume a clause, put it inside the set
-                PRINT_VERBOSE("\tsubsume " << o->print() <<
-                    " from " << c->print() << endl;
-                to_remove.insert(o);
-            }
-        }
-    }
-
-    PRINT << "removed " << to_remove.size() << " clauses\n";
-
-    // generate a new clause vector without the subsumed clauses
-    vector<ClausePtr > new_clauses;
-    for ( const auto& c : clauses )
-        if ( to_remove.find(c) == to_remove.end() )
-            new_clauses.push_back(c);
-    swap(clauses,new_clauses);
-    */
 }
 
 void SATSolver::clause_activity_decay() {
@@ -553,7 +524,6 @@ void SATSolver::set_number_of_variable(unsigned int n) {
     number_of_variable = n;
 
     watch_list.resize( 2 * number_of_variable );
-    subsumption.resize( 2 * number_of_variable );
 
     values.resize(n,LIT_UNASIGNED);
     decision_levels.resize(n,-1);

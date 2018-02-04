@@ -81,7 +81,6 @@ private:
     // handfull type declaration
     using ClausePtr = Clause*;
     using WatchMap = std::vector<std::vector<ClausePtr> >;
-    using SubsumptionMap = std::vector<std::vector<ClausePtr> >;
 
     // print the search status
     void print_status(unsigned int conflict, unsigned int restart,
@@ -117,7 +116,6 @@ private:
 
     // Preprocess the set of clause
     void preprocessing();
-    bool subset(const Clause& inner,const Clause& outer);
 
     // interval before restart
     unsigned int next_restart_interval();
@@ -130,6 +128,8 @@ private:
     // and the lower half are removed execept of clauses that are the
     // antecedent of an assigned literal.
     void reduce_learned();
+
+    void simplify_clause();
 
     // decay the activity of clause. This is an O(1) operation
     void clause_activity_decay();
@@ -172,9 +172,6 @@ private:
 
     // if the clause is sat, this vector contein a model for the solution
     std::vector<int> model;
-
-    // information needed in the preprocessing step
-    SubsumptionMap subsumption;
 
     // enable or disable feature
     bool enable_preprocessing;
