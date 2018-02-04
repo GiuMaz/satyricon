@@ -8,7 +8,7 @@
 #include "sat_solver.hpp"
 #include "vsids.hpp"
 
-using std::endl; using std::setw;
+using std::endl; using std::setw; using std::max;
 using std::vector; using std::string; using std::queue; using std::set;
 
 namespace Satyricon {
@@ -122,7 +122,8 @@ bool SATSolver::solve() {
             }
 
             if ( current_level() == 0 ) {
-                simplify_clause();
+                simplify(clauses);
+                simplify(learned);
             }
 
             // if the learning limit is reached, the learned clause must
@@ -158,31 +159,31 @@ bool SATSolver::solve() {
 }
 
 
-void SATSolver::simplify_clause() {
-
-    PRINT_VERBOSE("simplify original clause" << endl);
+void SATSolver::simplify( vector<ClausePtr> &vect) {
+    assert_message(current_level() == 0,"only at top level" );
+    assert_message(propagation_queue.empty(),
+            "no semplification before propagation");
     size_t j = 0;
-    for ( auto & c : clauses ) {
-        if ( c->simplify( *this ) )
+    for ( auto & c : vect ) {
+        if ( simplify_clause(c) )
             remove_clause(c);
         else
-            clauses[j++] = c;
+            vect[j++] = c;
     }
-    clauses.resize(j);
+    PRINT_VERBOSE("eliminated " << (vect.size()-j) << " clauses" << endl);
+    vect.resize(j);
+}
 
-    j = 0;
-
-    PRINT_VERBOSE("simplify learned clause" << endl);
-    for ( auto & c : learned ) {
-        if ( c->simplify( *this ) )
-            remove_clause(c);
-        else
-            learned[j++] = c;
+bool SATSolver::simplify_clause( ClausePtr c ) {
+    size_t j = 0;
+    for ( const auto & l : *c ) {
+        if ( get_asigned_value(l) == LIT_TRUE )
+            return true; // useless
+        else if ( get_asigned_value(l) == LIT_UNASIGNED )
+            c->at(j++) = l;
     }
-    if ( ( learned.size() - j ) > 0 )
-        PRINT_VERBOSE("eliminated " << (learned.size() - j) << " clauses" << endl);
-
-    learned.resize(j);
+    c->shrink(j);
+    return false; // still usefull
 }
 
 bool SATSolver::assume( Literal p ) {
@@ -204,7 +205,8 @@ inline int SATSolver::current_level() const {
 }
 
 void SATSolver::cancel_until( int level ) {
-    PRINT_VERBOSE("backtrack from " << current_level() << " to " << level << endl);
+    PRINT_VERBOSE("backtrack from " << current_level() <<
+            " to " << level << endl);
     while ( current_level() > level )
         cancel();
 }
@@ -309,9 +311,40 @@ SATSolver::ClausePtr SATSolver::propagation() {
 
         for (auto it = propagation_to_move.begin();
                 it != propagation_to_move.end(); ++it) {
+            // propagate effect on a clause
+            assert_message((*it)->at(0)==failed || (*it)->at(1)==failed,
+                    "moving a non watched");
+            Clause &c = **it; // usefull reference
+            // make sure the false literal is in position 1
+            if ( c[0] == failed ) { c[0] = c[1]; c[1] = failed; }
 
-            // propagate on a clause
-            bool conflict = (*it)->propagate(*this,failed);
+            // if the clause is already solved, nothing need to be moved
+            if (get_asigned_value(c[0]) == LIT_TRUE) {
+                // reinsert inside the previous watch list
+                watch_list[failed.index()].push_back(*it);
+                continue; // move to the next
+            }
+
+            // search a new literal to watch
+            bool foundt_new_watch = false;
+            for ( size_t pos = 2; pos != c.size(); ++pos) {
+                if ( get_asigned_value(c[pos]) != LIT_FALSE ) {
+                    // swap value
+                    c[1] = c[pos]; c[pos] = failed;
+                    // insert in the new watch list
+                    watch_list[c[1].index()].push_back(*it);
+                    // move to the next
+                    foundt_new_watch = true;
+                    break;
+                }
+            }
+            if ( foundt_new_watch ) continue; // move to the next
+
+            // no new literal to watch, reinsert in the old position
+            watch_list[failed.index()].push_back(*it);
+
+            // the clause must be a conflict or a unit, try to assign the value
+            bool conflict = assign(c[0],*it);
             if ( ! conflict ) continue; // no problem, move to the next
 
             // conflict found in propagation 
@@ -319,7 +352,8 @@ SATSolver::ClausePtr SATSolver::propagation() {
             ClausePtr conflict_clause = *it;
 
             // reset the other literal to move (it is already set by propagate)
-            copy(++it, propagation_to_move.end(), back_inserter(watch_list[failed.index()]));
+            copy(++it, propagation_to_move.end(),
+                    back_inserter(watch_list[failed.index()]));
 
             // clear the propagation
             queue<Literal>().swap(propagation_queue);
@@ -340,8 +374,18 @@ void SATSolver::conflict_analysis(ClausePtr conflict, vector<Literal> &out_learn
     out_learnt.push_back(Literal());
 
     do {
+        // remove ol reason
         analisys_reason.clear();
-        conflict->calcReason(*this, p, analisys_reason);
+
+        // increase activity for conflict clause
+        if ( conflict->is_learned() )
+            conflict->update_activity(clause_activity_update);
+
+        // calculate the reason for the literal p
+        // the reason is the set of literals that make this literal false
+        for( auto it = p != UNDEF_LIT ? conflict->begin()+1 : conflict->begin();
+                it != conflict->end(); ++it)
+            analisys_reason.push_back( !(*it) );
 
         // trace reason of P
         for ( const auto &q : analisys_reason ) {
@@ -351,7 +395,7 @@ void SATSolver::conflict_analysis(ClausePtr conflict, vector<Literal> &out_learn
                     ++counter;
                 else if ( decision_levels[q.var()] > 0 ) {
                     out_learnt.push_back(!q);
-                    out_btlevel = std::max(out_btlevel, decision_levels[q.var()]);
+                    out_btlevel = max(out_btlevel, decision_levels[q.var()]);
                 }
             }
         }
@@ -429,7 +473,7 @@ bool SATSolver::new_clause(vector<Literal> &c, bool learnt, ClausePtr &c_ref) {
         c_ref->at(1) = tmp;
 
         // increase activity
-        c_ref->update_activity( *this );
+        c_ref->update_activity( clause_activity_update );
     }
 
     //  add to the watch list
@@ -488,7 +532,7 @@ void SATSolver::clause_activity_decay() {
     // if big value is reached, a normalization is required
     if ( clause_activity_update > 1e100 ) {
         for ( auto & c : learned )
-            c->renormalize_activity(*this);
+            c->renormalize_activity(clause_activity_update);
         clause_activity_update = 1.0;
     }
 
@@ -504,7 +548,8 @@ void SATSolver::reduce_learned() {
 
     // remove the first half
     for ( ; i < learned.size()/2 ; ++i ) {
-        if ( learned[i]->locked(*this) )
+        // keep a clause if is the antecedent of an asignment
+        if ( antecedents[learned[i]->at(0).var()] == learned[i] )
             learned[j++] = learned[i]; // keep the justification
         else
             remove_clause(learned[i]);

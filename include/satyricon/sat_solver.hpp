@@ -74,8 +74,6 @@ public:
     void set_learning_increase( double value );
 
 private:
-    friend class Clause;
-
     // forward declaration of support class Clause
 
     // handfull type declaration
@@ -129,7 +127,9 @@ private:
     // antecedent of an assigned literal.
     void reduce_learned();
 
-    void simplify_clause();
+    void simplify(std::vector<ClausePtr> &vect);
+    bool simplify_clause( ClausePtr c );
+
 
     // decay the activity of clause. This is an O(1) operation
     void clause_activity_decay();

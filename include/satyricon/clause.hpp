@@ -20,7 +20,7 @@ private:
     // the learned clause need activity, the original need lit_hash
     double activity;
     bool learned  :  1;
-    uint64_t _size : 63;
+    uint64_t _size : 31;
 
     // not to be used directly, but only with allocate function
     Clause(bool l,const std::vector<Literal> &lits) :
@@ -45,44 +45,18 @@ public:
         c = nullptr;
     }
     
-    bool locked ( const SATSolver &s ) {
-        return s.antecedents[at(0).var()] == this;
-    }
-
     uint64_t size() const { return _size; }
     bool is_learned() const { return learned; }
     double get_activity() const {
         assert_message(is_learned(),"only learned clausole has activity");
         return activity;
     }
+
     Literal* get_data() {
         return reinterpret_cast<Literal*>(this+1);
     }
     const Literal* get_data() const {
         return reinterpret_cast<const Literal*>(this+1);
-    }
-
-    void update_activity(const SATSolver& s) {
-        activity+=s.clause_activity_update;
-    }
-
-    void renormalize_activity(const SATSolver& s) {
-        activity/=s.clause_activity_update;
-    }
-
-    bool simplify( const SATSolver &s ) {
-        assert_message( s.current_level() == 0,"only at top level" );
-        assert_message( s.propagation_queue.empty(),
-                "no semplification before propagation");
-        size_t j = 0;
-        for ( const auto & l : *this ) {
-            if ( s.get_asigned_value(l) == LIT_TRUE )
-                return true; // useless
-            else if ( s.get_asigned_value(l) == LIT_UNASIGNED )
-                at(j++) = l;
-        }
-        _size = j;
-        return false; // still usefull
     }
 
     Iterator begin() { return get_data(); }
@@ -106,44 +80,14 @@ public:
         return os.str();
     }
 
-    void calcReason(const SATSolver& s, Literal p,
-            std::vector<Literal> &out_reason) {
-        // invarian: ( p == undef ) || (p == lits[0])
-        auto it = begin();
-        if ( p != UNDEF_LIT ) ++it;
-        for (; it != end(); ++it)
-            out_reason.push_back( !(*it) );
-        if ( learned ) update_activity(s);
-    }
+    void update_activity(double value) { activity+=value; }
+    void renormalize_activity(double value) { activity/=value; }
 
-    bool propagate ( SATSolver &s, Literal l ) {
-
-        // make sure the false literal is in position 1
-        assert_message( at(0) == l || at(1) == l, "moving a non watched");
-        if ( at(0) == l ) { at(0) = at(1); at(1) = l; }
-
-        // if the clause is already solved, nothing need to be moved
-        if (s.get_asigned_value(at(0)) == LIT_TRUE) {
-            // reinsert inside the previous watch list
-            s.watch_list[l.index()].push_back(this);
-            return false; // no conflict
-        }
-
-        // search a new literal to watch
-        for ( auto it = begin()+2; it != end(); ++it ) {
-            if ( s.get_asigned_value(*it) != LIT_FALSE ) {
-                // foundt a valid literal, move the watch_list
-                at(1) = *it;
-                *it = l;
-                s.watch_list[at(1).index()].push_back(this);
-                return false; // no conflict
-            }
-        }
-
-        // no new literal to watch, reinsert in the old position
-        s.watch_list[l.index()].push_back(this);
-        // the clause must be a conflict or a unit, try to assign the value
-        return s.assign(at(0),this);
+    // this metod can be used to reduce the size of the literal
+    void shrink( size_t new_size) {
+        assert_message( new_size <= _size, "cannot increase size");
+        if ( new_size == _size ) return;
+        _size = new_size;
     }
 };
 
