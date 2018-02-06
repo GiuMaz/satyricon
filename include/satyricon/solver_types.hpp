@@ -92,7 +92,6 @@ using ConstIterator = const Literal *;
 
 private:
     // the learned clause need activity, the original need lit_hash
-    double activity;
     bool learned  :  1;
     uint64_t _size : 31;
 
@@ -100,16 +99,18 @@ private:
     Clause(bool l,const std::vector<Literal> &lits) :
         learned(l), _size(lits.size()) {
             std::copy(lits.begin(),lits.end(),this->begin());
-            if ( learned ) activity = 1.0;
+            if ( learned ) get_activity() = 1.0;
         }
 
 public:
     static Clause* allocate(const std::vector<Literal> &lits,
-            bool learned = false) {
+            bool learnt = false) {
+
         auto size = sizeof(Clause) + sizeof(Literal)*lits.size();
+        if ( learnt ) size += sizeof(double);
         void* memory =  malloc(size);
         assert_message( memory != nullptr, "out of memory");
-        return new (memory) Clause(learned,lits);
+        return new (memory) Clause(learnt,lits);
     }
 
     static void deallocate(Clause* &c) {
@@ -121,9 +122,9 @@ public:
     
     uint64_t size() const { return _size; }
     bool is_learned() const { return learned; }
-    double get_activity() const {
+    double &get_activity() {
         assert_message(is_learned(),"only learned clausole has activity");
-        return activity;
+        return *reinterpret_cast<double*>(end());
     }
 
     Literal* get_data() {
@@ -154,8 +155,8 @@ public:
         return os.str();
     }
 
-    void update_activity(double value) { activity+=value; }
-    void renormalize_activity(double value) { activity/=value; }
+    void update_activity(double value) { get_activity()+=value; }
+    void renormalize_activity(double value) { get_activity()/=value; }
 
     // this metod can be used to reduce the size of the literal
     void shrink( size_t new_size) {

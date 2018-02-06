@@ -128,14 +128,12 @@ bool SATSolver::solve() {
             // if the learning limit is reached, the learned clause must
             // be reduced, the new learning limit is now higher
             if ( enable_deletion && learned.size() >= learn_limit ) {
-
-                print_status(conflict_counter,restart_counter, learn_limit);
-
                 // cast for suppres warning
                 learn_limit += static_cast<unsigned int>(
                         (learn_limit*percentual_learn_increase)/100.0);
 
                 reduce_learned();
+                print_status(conflict_counter,restart_counter, learn_limit);
             }
 
             if ( enable_restart && conflict_counter >= restart_threshold ) {
@@ -178,7 +176,7 @@ bool SATSolver::simplify_clause( ClausePtr c ) {
     for ( const auto & l : *c ) {
         if ( get_asigned_value(l) == LIT_TRUE )
             return true; // useless
-        else if ( get_asigned_value(l) == LIT_UNASIGNED )
+        if ( get_asigned_value(l) == LIT_UNASIGNED )
             c->at(j++) = l;
     }
     c->shrink(j);
@@ -540,6 +538,9 @@ void SATSolver::clause_activity_decay() {
 
 void SATSolver::reduce_learned() {
     size_t i = 0, j = 0; // use this indices to compact the vector
+    // Remove any clause below this activity
+    double  extra_lim = clause_activity_update / learned.size();
+
     // sort learned clause by activity (in ascending order)
     sort(learned.begin(), learned.end(),
             [&](const ClausePtr& l, const ClausePtr& r)
@@ -548,7 +549,8 @@ void SATSolver::reduce_learned() {
     // remove the first half
     for ( ; i < learned.size()/2 ; ++i ) {
         // keep a clause if is the antecedent of an asignment
-        if ( antecedents[learned[i]->at(0).var()] == learned[i] )
+        if ( learned[i]->size() == 2 || 
+                antecedents[learned[i]->at(0).var()] == learned[i] )
             learned[j++] = learned[i]; // keep the justification
         else
             remove_clause(learned[i]);
@@ -556,7 +558,15 @@ void SATSolver::reduce_learned() {
 
     // move the second half in the first half (this effectively delete the
     // low activity clauses)
-    for (; i < learned.size(); ++i) learned[j++] = learned[i];
+    for (; i < learned.size(); ++i) {
+        // keep a clause if is the antecedent of an asignment
+        if ( learned[i]->size() == 2 || 
+                antecedents[learned[i]->at(0).var()] == learned[i] ||
+                learned[i]->get_activity() >= extra_lim )
+            learned[j++] = learned[i]; // keep the justification
+        else
+            remove_clause(learned[i]);
+    }
 
     // keep only the most active clause
     learned.resize( j );
