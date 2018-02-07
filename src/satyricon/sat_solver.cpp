@@ -5,7 +5,7 @@
 #include <iomanip>
 #include "assert_message.hpp"
 #include "sat_solver.hpp"
-#include "vsids.hpp"
+//#include "vsids.hpp"
 
 using std::endl; using std::setw; using std::max;
 using std::vector; using std::string; using std::queue; using std::set;
@@ -39,7 +39,7 @@ SATSolver::SATSolver():
     decision_levels(),
     antecedents(),
     propagation_queue(),
-    vsids(),
+    //vsids(),
     trail(),
     trail_limit(),
     log_level(1),
@@ -51,12 +51,17 @@ SATSolver::SATSolver():
     restart_threshold(1),
     clause_activity_update(1.0),
     clause_decay_factor(1.0 / 0.999),
+    literal_decay_factor(1.0/ 0.95),
+    literal_activity_update(1.0),
     initial_learn_mult (2.0),
     percentual_learn_increase(50.0),
     solve_conflict_literals(),
     propagation_to_move(),
     analisys_seen(),
-    analisys_reason()
+    analisys_reason(),
+    literals_activity(),
+    order(literals_activity,values),
+    seed(123456)
 {}
 
 SATSolver::~SATSolver() {
@@ -74,6 +79,9 @@ bool SATSolver::solve() {
     unsigned int learn_limit = static_cast<unsigned int>(
             static_cast<double>(clauses.size())*initial_learn_mult );
     restart_threshold = new_restart_threshold();
+
+    // order literal for decision
+    order.initialize_heap();
 
     // preprocess
     if ( enable_preprocessing) { preprocessing(); }
@@ -106,7 +114,8 @@ bool SATSolver::solve() {
             learn_clause(solve_conflict_literals); // learn the conflcit clause
 
             // after a conflict, the activity of literals and clauses decay
-            vsids.decay();
+            //vsids.decay();
+            literals_activity_decay();
             clause_activity_decay();
         }
         else {
@@ -148,13 +157,28 @@ bool SATSolver::solve() {
 
             // open a new decision level and decide a new literal
             // based on the vsids heuristic
-            Literal l = vsids.select_new(values);
+            //Literal l = vsids.select_new(values);
+            Literal l = choice_lit();
             PRINT_VERBOSE("decide literal " << l << endl);
             assume(l);
         }
     }
 }
 
+Literal SATSolver::choice_lit() {
+
+    // random choice 1% of times
+    if ( random() % 100 == 0 ) {
+        int val;
+        do {
+            val = random() % number_of_variable;
+        } while ( values[val] != LIT_UNASIGNED );
+        return Literal ( val,static_cast<bool>(random() % 2) ) ;
+    }
+
+    // otherwise select from order
+    return order.decision();
+}
 
 void SATSolver::simplify( vector<ClausePtr> &vect) {
     assert_message(current_level() == 0,"only at top level" );
@@ -411,6 +435,7 @@ void SATSolver::undo_one() {
     values[p.var()] = LIT_UNASIGNED;
     antecedents[p.var()] = nullptr;
     decision_levels[p.var()]  = -1;
+    order.insert(p.var());
     trail.pop_back();
 }
 
@@ -454,10 +479,6 @@ bool SATSolver::new_clause(vector<Literal> &c, bool learnt, ClausePtr &c_ref) {
     // build the clause
     c_ref = Clause::allocate(c,learnt);
 
-    // initialize vsids info
-    for ( const auto& l : c ) vsids.update(l);
-
-
     if ( learnt ) { 
         // pick a correct second literal to watch
         auto second = c_ref->begin()+1;
@@ -487,7 +508,13 @@ bool SATSolver::add_clause(std::vector<Literal>& lits) {
     // if the clause is a conflict, return immediatly
     if ( conflict ) return true; // conflict
     // clause is nullptr if the new clause is a unit
-    if ( clause != nullptr ) clauses.push_back(clause);
+    if ( clause != nullptr ) {
+        clauses.push_back(clause);
+        // initialize vsids info
+        //for ( const auto& l : *clause ) vsids.update(l);
+        for ( const auto& l : *clause ) literals_activity[l.index()]+=1.0;
+
+    }
     return false; // no conflict
 }
 
@@ -500,7 +527,16 @@ void SATSolver::learn_clause(std::vector<Literal> & lits) {
     assign(lits[0],clause);
     PRINT_VERBOSE("address " << clause << std::endl);
     // if the clause have only one literal, don't add that to the list
-    if ( clause != nullptr ) learned.push_back(clause);
+    if ( clause != nullptr ) {
+        learned.push_back(clause);
+        // initialize vsids info
+        //for ( const auto& l : *clause ) vsids.update(l);
+        for ( const auto& l : *clause ) {
+            literals_activity[l.index()] += clause_activity_update;
+            order.increase_activity(l);
+        }
+    }
+
 }
 
 // Nothing for now
@@ -522,6 +558,18 @@ void SATSolver::remove_clause( ClausePtr c ) {
     remove_from_vect( watch_list[c->at(1).index()], c );
 
     Clause::deallocate( c );
+}
+
+void SATSolver::literals_activity_decay() {
+    // if big value is reached, a normalization is required
+    /*
+    if ( literals_activity_decay > 1e100 ) {
+        for ( auto & c : learned )
+            c->renormalize_activity(clause_activity_update);
+        clause_activity_update = 1.0;
+    }
+    */
+    literal_activity_update*=literal_decay_factor;
 }
 
 void SATSolver::clause_activity_decay() {
@@ -580,12 +628,14 @@ void SATSolver::set_number_of_variable(unsigned int n) {
     number_of_variable = n;
 
     watch_list.resize( 2 * number_of_variable );
+    literals_activity.resize( 2 * number_of_variable, 0.0);
 
     values.resize(n,LIT_UNASIGNED);
     decision_levels.resize(n,-1);
     antecedents.resize(n,nullptr);
-    vsids.set_size(n);
+    //vsids.set_size(n);
     analisys_seen.resize(n);
+    order.set_size( 2 * number_of_variable );
 }
 
 void SATSolver::set_log( int l) {
@@ -613,8 +663,9 @@ void SATSolver::set_clause_decay(double decay) {
     clause_decay_factor = 1.0 / decay;
 }
 
-void SATSolver::set_literal_decay(double ld_factor) {
-    vsids.set_parameter(ld_factor);
+void SATSolver::set_literal_decay(double decay) {
+    assert_message( decay > 0.0 && decay <= 1.0, "must be 0.0 < decay ≤ 0.1 ");
+    literal_decay_factor = 1.0 / decay;
 }
 
 void SATSolver::set_learning_multiplier( double value ) {
@@ -625,5 +676,10 @@ void SATSolver::set_learning_increase( double value ) {
     percentual_learn_increase = value;
 }
 
+int SATSolver::random() { 
+    // Linear Congruential Generator
+    seed = ( 1103515245 * seed + 12345 ) % 2147483648;
+    return seed;
+}
 } // end namespace Satyricon
 

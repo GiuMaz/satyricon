@@ -13,6 +13,8 @@
 
 namespace Satyricon {
 
+typedef int var;
+
 /**
  * Possible value assigned to a literal
  */
@@ -30,14 +32,13 @@ enum literal_value {
 class Literal {
 public:
     // constructor
-    Literal(int _value, bool _is_negated) :
-        value( _value + _value + (int)_is_negated ) {}
+    Literal(int v, bool is_signed) :
+        value( v + v + (int)is_signed ) {}
     Literal(): Literal(-1,false) {}
 
     Literal(const Literal& other) = default;
 
     // getter
-    // TODO: change to sign, revert everything!
     bool sign() const { return value & 1; }
     unsigned int var() const   { return (unsigned int) value >> 1; }
     unsigned int index() const { return (unsigned int) value; }
@@ -164,6 +165,143 @@ public:
         if ( new_size == _size ) return;
         _size = new_size;
     }
+};
+
+/**
+ * Binary heap class, based on the CLR description
+ */
+class Literal_Heap {
+    using size_type = size_t;
+public:
+    explicit Literal_Heap(const std::vector<double> &v):
+        activity(v), value(), map_position()  {}
+
+    Literal pop_max() {
+        assert_message(!value.empty(), "pop from an empty heap");
+
+        auto max = value.front();
+        value.front() = value.back();
+        map_position[max.index()] = -1;
+        map_position[value.front().index()] = 0;
+        value.pop_back();
+        heapify(0);
+        return max;
+    }
+
+    void insert(const Literal& val) {
+        if ( map_position[val.index()] != -1 ) return; // already inserted
+
+        value.push_back(val);
+        map_position[val.index()] = static_cast<int>(value.size()-1);
+        increase_key(value.size()-1);
+    }
+
+    void update(const Literal& val) {
+        if ( map_position[val.index()] != -1 )
+            increase_key(static_cast<unsigned int>(map_position[val.index()]));
+    }
+
+    void set_size( unsigned int s ) {
+        map_position.resize(s,-1);
+    }
+
+    void initialize() {
+        value.clear();
+        value.reserve(map_position.size());
+
+        for ( int i = 0; i < static_cast<int>(map_position.size()/2); ++i ) {
+
+            Literal l(i,false);
+            value.push_back(l);
+            map_position[l.index()] = value.size()-1;
+
+            l = Literal(i,true);
+            value.push_back(l);
+            map_position[l.index()] = value.size()-1;
+
+        }
+        assert_message( value.size() == map_position.size(), "");
+
+        for ( int i = value.size()/2; i >= 0; --i )
+            heapify(i);
+
+    }
+
+
+private:
+
+    const std::vector<double> &activity;
+    std::vector<Literal> value;
+    std::vector<int> map_position;
+
+    // tree navigation (0 based, it's different from CLR's 1 based)
+    size_type father(size_type i) { return (i-1) >> 1; }
+    size_type left(size_type i)   { return (i<<1) + 1; }
+    size_type right(size_type i)  { return (i+1) << 1; }
+
+    void heapify(size_type i) {
+        //std::cout <<"heapify " << i << " " << left(i) << " " << right(i) << std::endl;
+        auto largest = i;
+        if (left(i) < value.size()  && activity[value[largest].index()] < activity[value[left(i)].index()] )
+            largest = left(i);
+        if (right(i) < value.size()  && activity[value[largest].index()] < activity[value[right(i)].index()] )
+            largest = right(i);
+
+        if ( largest != i ) {
+            std::swap(value[i],value[largest]);
+            std::swap(map_position[value[i].index()],
+                    map_position[value[largest].index()]);
+
+            heapify(largest);
+        }
+    }
+
+    void increase_key( size_type pos ) {
+        while ( pos > 0 && activity[value[father(pos)].index()] < activity[value[pos].index()] ) {
+            std::swap(value[pos],value[father(pos)]);
+            std::swap(map_position[value[pos].index()],
+                    map_position[value[father(pos)].index()]);
+            pos = father(pos);
+        }
+    }
+};
+
+/**
+ * implementation of the VSIDS heuristic for literal selection
+ */
+class Literal_Order {
+
+public:
+    Literal_Order( const std::vector<double> &act,
+            const std::vector<literal_value> &as):
+        assignment(as), order(act) {}
+
+    Literal decision() {
+        Literal l;
+        do { l = order.pop_max(); } while(assignment[l.var()] != LIT_UNASIGNED);
+        return l;
+    }
+
+    void increase_activity( Literal l ) {
+        order.update(l);
+    }
+
+    void insert(int value) {
+        order.insert(Literal(value,true ));
+        order.insert(Literal(value,false));
+    }
+
+    void set_size(unsigned int s) {
+        order.set_size(s);
+    }
+
+    void initialize_heap() {
+        order.initialize();
+    }
+
+private:
+    const std::vector<literal_value> &assignment;
+    Literal_Heap order;
 };
 
 } // end namespace Satyricon

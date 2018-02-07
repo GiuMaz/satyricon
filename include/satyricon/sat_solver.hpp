@@ -6,11 +6,9 @@
 #include <memory>
 #include <unordered_map>
 #include "solver_types.hpp"
-#include "vsids.hpp"
+//#include "vsids.hpp"
 
 namespace Satyricon {
-
-typedef int var;
 
 /**
  * SAT Solver.
@@ -117,6 +115,8 @@ private:
     unsigned int next_restart_interval();
     unsigned int new_restart_threshold();
 
+    Literal choice_lit();
+
     // decide a literal
     bool assume( Literal p );
 
@@ -131,6 +131,7 @@ private:
 
     // decay the activity of clause. This is an O(1) operation
     void clause_activity_decay();
+    void literals_activity_decay();
 
     // clause collections
     std::vector<ClausePtr > clauses;
@@ -150,7 +151,7 @@ private:
     std::queue<Literal> propagation_queue;
 
     // VSIDS
-    VSIDS_Info vsids;
+    //VSIDS_Info vsids;
 
     // trial of assignment
     std::vector<Literal> trail;
@@ -164,6 +165,9 @@ private:
 
     //number of assinged variable
     size_t number_of_assigned_variable() const;
+
+    // generate a random number in 0..2^31, it modify the seed
+    int random();
 
     // log file
     int log_level;
@@ -189,6 +193,10 @@ private:
     double clause_activity_update;
     double clause_decay_factor;
 
+    // literal selection policy 
+    double literal_decay_factor;
+    double literal_activity_update;
+
     // clause deletion policy
     double initial_learn_mult;
     double percentual_learn_increase;
@@ -198,6 +206,12 @@ private:
     std::vector<ClausePtr> propagation_to_move;
     std::vector<bool> analisys_seen;
     std::vector<Literal> analisys_reason;
+
+
+    std::vector<double> literals_activity;
+    Literal_Order order;
+    
+    int seed;
 };
 
 } // end namespace Satyricon
