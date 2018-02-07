@@ -6,7 +6,6 @@
 #include <memory>
 #include <unordered_map>
 #include "solver_types.hpp"
-//#include "vsids.hpp"
 
 namespace Satyricon {
 
@@ -149,9 +148,6 @@ private:
     // after an assignment is performed, both for decision or unit propagation,
     // the effect of the assignment on the other clause must be propagated
     std::queue<Literal> propagation_queue;
-
-    // VSIDS
-    //VSIDS_Info vsids;
 
     // trial of assignment
     std::vector<Literal> trail;

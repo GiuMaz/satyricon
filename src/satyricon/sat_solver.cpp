@@ -5,7 +5,6 @@
 #include <iomanip>
 #include "assert_message.hpp"
 #include "sat_solver.hpp"
-//#include "vsids.hpp"
 
 using std::endl; using std::setw; using std::max;
 using std::vector; using std::string; using std::queue; using std::set;
@@ -39,7 +38,6 @@ SATSolver::SATSolver():
     decision_levels(),
     antecedents(),
     propagation_queue(),
-    //vsids(),
     trail(),
     trail_limit(),
     log_level(1),
@@ -114,7 +112,6 @@ bool SATSolver::solve() {
             learn_clause(solve_conflict_literals); // learn the conflcit clause
 
             // after a conflict, the activity of literals and clauses decay
-            //vsids.decay();
             literals_activity_decay();
             clause_activity_decay();
         }
@@ -157,7 +154,6 @@ bool SATSolver::solve() {
 
             // open a new decision level and decide a new literal
             // based on the vsids heuristic
-            //Literal l = vsids.select_new(values);
             Literal l = choice_lit();
             PRINT_VERBOSE("decide literal " << l << endl);
             assume(l);
@@ -511,7 +507,6 @@ bool SATSolver::add_clause(std::vector<Literal>& lits) {
     if ( clause != nullptr ) {
         clauses.push_back(clause);
         // initialize vsids info
-        //for ( const auto& l : *clause ) vsids.update(l);
         for ( const auto& l : *clause ) literals_activity[l.index()]+=1.0;
 
     }
@@ -530,7 +525,6 @@ void SATSolver::learn_clause(std::vector<Literal> & lits) {
     if ( clause != nullptr ) {
         learned.push_back(clause);
         // initialize vsids info
-        //for ( const auto& l : *clause ) vsids.update(l);
         for ( const auto& l : *clause ) {
             literals_activity[l.index()] += clause_activity_update;
             order.increase_activity(l);
@@ -633,7 +627,6 @@ void SATSolver::set_number_of_variable(unsigned int n) {
     values.resize(n,LIT_UNASIGNED);
     decision_levels.resize(n,-1);
     antecedents.resize(n,nullptr);
-    //vsids.set_size(n);
     analisys_seen.resize(n);
     order.set_size( 2 * number_of_variable );
 }
