@@ -78,12 +78,16 @@ bool SATSolver::solve() {
             static_cast<double>(clauses.size())*initial_learn_mult );
     restart_threshold = new_restart_threshold();
 
+    unsigned int increase_limit_threshold = 100;
+    unsigned int increase_limit_counter = increase_limit_threshold;
+
     // order literal for decision
     order.initialize_heap();
 
     // preprocess
     if ( enable_preprocessing) { preprocessing(); }
 
+    print_status(conflict_counter,restart_counter, learn_limit);
     while ( true ) { // loop until a solution is found
 
         PRINT_VERBOSE("propagate at level " << current_level() << endl);
@@ -102,6 +106,14 @@ bool SATSolver::solve() {
                 return false; // UNSAT
             }
 
+            if ( increase_limit_counter-- == 0 ) {
+                increase_limit_threshold *= 1.5;
+                increase_limit_counter = increase_limit_threshold;
+                learn_limit += static_cast<unsigned int>(
+                        (learn_limit*percentual_learn_increase)/100.0);
+
+                print_status(conflict_counter,restart_counter, learn_limit);
+            }
             // otherwise, analize the conflict and backtrack
 
             int backtrack_level;
@@ -135,11 +147,7 @@ bool SATSolver::solve() {
             // be reduced, the new learning limit is now higher
             if ( enable_deletion && learned.size() >= learn_limit ) {
                 // cast for suppres warning
-                learn_limit += static_cast<unsigned int>(
-                        (learn_limit*percentual_learn_increase)/100.0);
-
                 reduce_learned();
-                print_status(conflict_counter,restart_counter, learn_limit);
             }
 
             if ( enable_restart && conflict_counter >= restart_threshold ) {
@@ -164,7 +172,7 @@ bool SATSolver::solve() {
 Literal SATSolver::choice_lit() {
 
     // random choice 1% of times
-    if ( random() % 100 == 0 ) {
+    if ( random() % 100 == 0 ) { // TODO: probably need more test/tuning
         int val;
         do {
             val = random() % number_of_variable;
@@ -556,13 +564,12 @@ void SATSolver::remove_clause( ClausePtr c ) {
 
 void SATSolver::literals_activity_decay() {
     // if big value is reached, a normalization is required
-    /*
-    if ( literals_activity_decay > 1e100 ) {
-        for ( auto & c : learned )
-            c->renormalize_activity(clause_activity_update);
-        clause_activity_update = 1.0;
+    if ( literal_activity_update > 1e100 ) {
+        for ( auto & l : literals_activity )
+            l/=1e100;
+        literal_activity_update/=1e100;
+        order.initialize_heap();
     }
-    */
     literal_activity_update*=literal_decay_factor;
 }
 
