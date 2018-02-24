@@ -5,3 +5,4 @@ compile_commands.json
 .vimrc
 .idea/*
 cnf/*
+TODO.md
