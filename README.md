@@ -4,8 +4,8 @@ di riferimento.
 
 vanno lanciati i seguenti comandi:
 
-mkdir build
-cd build
-cmake ..
-make -j
+    mkdir build
+    cd build
+    cmake ..
+    make -j
 
