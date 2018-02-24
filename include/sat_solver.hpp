@@ -10,10 +10,53 @@
 namespace Satyricon {
 
 /**
+ * parameter used during the research process
+ */
+struct SearchParameter {
+
+    SearchParameter() : 
+        enable_preprocessing(true),
+        enable_restart(true),
+        enable_deletion(true),
+        restart_interval_multiplier(100),
+        restart_threshold(1),
+        literal_decay_factor(1.0 / 0.95),
+        literal_activity_update(1.0),
+        clause_activity_update(1.0),
+        clause_decay_factor(1.0 / 0.999),
+        initial_learn_mult(0.5),
+        percentual_learn_increase(10.0)
+    {}
+
+    // enable or disable feature
+    bool enable_preprocessing;
+    bool enable_restart;
+    bool enable_deletion;
+
+    // restartin policy
+    unsigned int restart_interval_multiplier;
+    unsigned int restart_threshold;
+
+    // literal selection policy 
+    double literal_decay_factor;
+    double literal_activity_update;
+
+    // clause deletion policy
+    double clause_activity_update;
+    double clause_decay_factor;
+    double initial_learn_mult;
+    double percentual_learn_increase;
+};
+
+/**
  * SAT Solver.
  * This class is used to solve a SAT problem instance.
  */
 class SATSolver {
+
+    // handfull type declaration
+    using ClausePtr = Clause*;
+    using WatchMap = std::vector<std::vector<ClausePtr> >;
 
 public:
 
@@ -71,10 +114,6 @@ public:
 private:
     // forward declaration of support class Clause
 
-    // handfull type declaration
-    using ClausePtr = Clause*;
-    using WatchMap = std::vector<std::vector<ClausePtr> >;
-
     // print the search status
     void print_status(unsigned int conflict, unsigned int restart,
             unsigned int learn_limit);
@@ -111,7 +150,7 @@ private:
     void preprocessing();
 
     // interval before restart
-    unsigned int next_restart_interval();
+    unsigned int next_restart_interval( unsigned int pos);
     unsigned int new_restart_threshold();
 
     Literal choice_lit();
@@ -163,7 +202,7 @@ private:
     size_t number_of_assigned_variable() const;
 
     // generate a random number in 0..2^31, it modify the seed
-    int random();
+    unsigned int random();
 
     // log file
     int log_level;
@@ -171,31 +210,8 @@ private:
     // if the clause is sat, this vector contein a model for the solution
     std::vector<int> model;
 
-    // enable or disable feature
-    bool enable_preprocessing;
-    bool enable_restart;
-    bool enable_deletion;
-
     // values for luby sequence, used for restart policy
-    size_t luby_k    = 1;
-    size_t luby_next = 1;
-    std::vector<unsigned int> luby_memoization {};
-
-    // restarting 
-    unsigned int restart_interval_multiplier;
-    unsigned int restart_threshold;
-
-    // clause deletion policy
-    double clause_activity_update;
-    double clause_decay_factor;
-
-    // literal selection policy 
-    double literal_decay_factor;
-    double literal_activity_update;
-
-    // clause deletion policy
-    double initial_learn_mult;
-    double percentual_learn_increase;
+    unsigned int luby_next = 0;
 
     // support data structure
     std::vector<Literal> solve_conflict_literals;
@@ -203,11 +219,12 @@ private:
     std::vector<bool> analisys_seen;
     std::vector<Literal> analisys_reason;
 
-
     std::vector<double> literals_activity;
     Literal_Order order;
     
-    int seed;
+    unsigned int seed;
+
+    SearchParameter param;
 };
 
 } // end namespace Satyricon

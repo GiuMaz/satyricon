@@ -95,29 +95,29 @@ int main(int argc, char* argv[])
             "disable deletion of learned clauses",{"no-deletion"});
 
     // decay policy
-    double decay_literal_factor = 0.95, decay_clauses_factor = 0.999;
-    auto& clause_decay = parser.make_option<double>("clause decay",
+    float decay_literal_factor = 0.95, decay_clauses_factor = 0.999;
+    auto& clause_decay = parser.make_option<float>("clause decay",
             "decay factor for activity of clauses.\nSould be "
             "0 < c-decay ≤ 1.0 (default " +
             std::to_string(decay_clauses_factor)+")",{"c-decay"});
-    auto& literal_decay = parser.make_option<double>("literal decay",
+    auto& literal_decay = parser.make_option<float>("literal decay",
             "decay factor for activity of literal.\nShould be "
             "0 < l-decay ≤ 1.0 (defualt "+
             std::to_string(decay_literal_factor)+")",{"l-decay"});
 
     // restarting policy
-    unsigned int restart_interval_multiplier = 10;
+    unsigned int restart_interval_multiplier = 100;
     auto& restart_mult = parser.make_option<unsigned int>("restart multiplier",
             "restarting sequence multiplicator (default "+
             to_string(restart_interval_multiplier)+")", {"b","restart-mult"});
 
     // clause deletion policy
-    double initial_learn_mult = 0.5, percentual_learn_increase = 10.0;
-    auto& learn_mult = parser.make_option<double>("learn multiplier",
+    float initial_learn_mult = 0.5, percentual_learn_increase = 10.0;
+    auto& learn_mult = parser.make_option<float>("learn multiplier",
             "initial learn limit, is a multiple of the clauses in "
             " the formula (default "+ to_string(initial_learn_mult)+"x)",
             {"l","learn-mult"});
-    auto& learn_increase = parser.make_option<double>("learn increase",
+    auto& learn_increase = parser.make_option<float>("learn increase",
             "when the learn limit is reached, some learned clauses are "
             "eliminated and the learn limit is increased by this percentage "
             "(default "+ to_string(percentual_learn_increase)+"%)",
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
 
     // decay values
     if ( clause_decay ) {
-        double decay = clause_decay.get_value();
+        float decay = clause_decay.get_value();
         if ( decay <= 0.0 || decay > 1.0 ) {
             cout << "ERROR: should be 0 < c-decay ≤ 1.0\n" << parser;
             exit(1);
@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
         decay_clauses_factor = decay;
     }
     if ( literal_decay ) {
-        double decay = literal_decay.get_value();
+        float decay = literal_decay.get_value();
         if ( decay <= 0.0 || decay > 1.0 ) {
             cout << "ERROR: should be 0 < l-decay ≤ 1.0\n" << parser;
             exit(1);
@@ -210,7 +210,7 @@ int main(int argc, char* argv[])
 
         // get initilization time
         auto init_time = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed = init_time - start;
+        std::chrono::duration<float> elapsed = init_time - start;
         std::cout << "read file and initialized solver in: " <<
             std::fixed << std::setprecision(2) << elapsed.count() << "s\n";
 

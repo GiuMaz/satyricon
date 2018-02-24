@@ -42,24 +42,14 @@ SATSolver::SATSolver():
     trail_limit(),
     log_level(1),
     model(),
-    enable_preprocessing(true),
-    enable_restart(true),
-    enable_deletion(true),
-    restart_interval_multiplier(10),
-    restart_threshold(1),
-    clause_activity_update(1.0),
-    clause_decay_factor(1.0 / 0.999),
-    literal_decay_factor(1.0/ 0.95),
-    literal_activity_update(1.0),
-    initial_learn_mult (2.0),
-    percentual_learn_increase(50.0),
     solve_conflict_literals(),
     propagation_to_move(),
     analisys_seen(),
     analisys_reason(),
     literals_activity(),
     order(literals_activity,values),
-    seed(123456)
+    seed(123456),
+    param()
 {}
 
 SATSolver::~SATSolver() {
@@ -75,8 +65,8 @@ bool SATSolver::solve() {
     unsigned int conflict_counter = 0;
     unsigned int restart_counter = 0;
     unsigned int learn_limit = static_cast<unsigned int>(
-            static_cast<double>(clauses.size())*initial_learn_mult );
-    restart_threshold = new_restart_threshold();
+            static_cast<double>(clauses.size())*param.initial_learn_mult );
+    param.restart_threshold = new_restart_threshold();
 
     unsigned int increase_limit_threshold = 100;
     unsigned int increase_limit_counter = increase_limit_threshold;
@@ -85,7 +75,7 @@ bool SATSolver::solve() {
     order.initialize_heap();
 
     // preprocess
-    if ( enable_preprocessing) { preprocessing(); }
+    if ( param.enable_preprocessing) { preprocessing(); }
 
     print_status(conflict_counter,restart_counter, learn_limit);
     while ( true ) { // loop until a solution is found
@@ -106,11 +96,11 @@ bool SATSolver::solve() {
                 return false; // UNSAT
             }
 
-            if ( increase_limit_counter-- == 0 ) {
+            if ( --increase_limit_counter == 0 ) {
                 increase_limit_threshold *= 1.5;
                 increase_limit_counter = increase_limit_threshold;
                 learn_limit += static_cast<unsigned int>(
-                        (learn_limit*percentual_learn_increase)/100.0);
+                        (learn_limit*param.percentual_learn_increase)/100.0);
 
                 print_status(conflict_counter,restart_counter, learn_limit);
             }
@@ -145,18 +135,19 @@ bool SATSolver::solve() {
 
             // if the learning limit is reached, the learned clause must
             // be reduced, the new learning limit is now higher
-            if ( enable_deletion && learned.size() >= learn_limit ) {
+            if ( param.enable_deletion && learned.size() >= learn_limit ) {
                 // cast for suppres warning
                 reduce_learned();
             }
 
-            if ( enable_restart && conflict_counter >= restart_threshold ) {
+            if ( param.enable_restart &&
+                    conflict_counter >= param.restart_threshold ) {
                 // if the restart limit is reached, bactrack to level zero
                 // and select the new threshold for the restart process
                 restart_counter++;
-                restart_threshold += new_restart_threshold();
+                param.restart_threshold += new_restart_threshold();
                 PRINT_VERBOSE("restarting. next restart at "<<
-                        restart_threshold<< endl);
+                        param.restart_threshold<< endl);
                 cancel_until(0);
             }
 
@@ -239,30 +230,27 @@ void SATSolver::cancel_until( int level ) {
 void SATSolver::print_status(unsigned int conflict, unsigned int restart,
         unsigned int learn_limit) {
     PRINT("conflict: " << setw(7) << conflict);
-    if ( enable_restart )
+    if ( param.enable_restart )
         PRINT(", restart: " << setw(7) <<  restart);
-    if ( enable_deletion )
+    if ( param.enable_deletion )
         PRINT(", learn limit: " << setw(7) <<  learn_limit);
     PRINT(", learned: " << setw(7) <<  learned.size() << endl);
 }
 
-unsigned int SATSolver::next_restart_interval() {
-    if ( luby_next == ( (1<<luby_k) -1) ) {
-        luby_memoization.push_back( 1 << (luby_k-1) );
-        luby_k++;
-    }
-    else {
-        luby_memoization.push_back(
-                luby_memoization[luby_next - (1<< (luby_k-1))] );
-    }
+unsigned int SATSolver::next_restart_interval( unsigned int pos) {
+    unsigned int size, seq;
+    for ( size = 1, seq = 0; size < pos+1; ++seq, size = 2*size + 1 );
 
-    luby_next++;
-
-    return luby_memoization.back();
+    while ( (size-1) != pos ) {
+        size /= 2;
+        --seq;
+        pos %= size;
+    }
+    return 2 << seq;
 }
 
 unsigned int SATSolver::new_restart_threshold() {
-    return restart_interval_multiplier * next_restart_interval();
+    return param.restart_interval_multiplier * next_restart_interval(luby_next++);
 }
 
 void SATSolver::build_sat_proof() {
@@ -404,7 +392,7 @@ void SATSolver::conflict_analysis(ClausePtr conflict, vector<Literal> &out_learn
 
         // increase activity for conflict clause
         if ( conflict->is_learned() )
-            conflict->update_activity(clause_activity_update);
+            conflict->update_activity(param.clause_activity_update);
 
         // calculate the reason for the literal p
         // the reason is the set of literals that make this literal false
@@ -495,7 +483,7 @@ bool SATSolver::new_clause(vector<Literal> &c, bool learnt, ClausePtr &c_ref) {
         c_ref->at(1) = tmp;
 
         // increase activity
-        c_ref->update_activity( clause_activity_update );
+        c_ref->update_activity( param.clause_activity_update );
     }
 
     //  add to the watch list
@@ -534,7 +522,7 @@ void SATSolver::learn_clause(std::vector<Literal> & lits) {
         learned.push_back(clause);
         // initialize vsids info
         for ( const auto& l : *clause ) {
-            literals_activity[l.index()] += clause_activity_update;
+            literals_activity[l.index()] += param.clause_activity_update;
             order.increase_activity(l);
         }
     }
@@ -564,31 +552,31 @@ void SATSolver::remove_clause( ClausePtr c ) {
 
 void SATSolver::literals_activity_decay() {
     // if big value is reached, a normalization is required
-    if ( literal_activity_update > 1e100 ) {
+    if ( param.literal_activity_update > 1e100 ) {
         for ( auto & l : literals_activity )
             l/=1e100;
-        literal_activity_update/=1e100;
+        param.literal_activity_update/=1e100;
         order.initialize_heap();
     }
-    literal_activity_update*=literal_decay_factor;
+    param.literal_activity_update*=param.literal_decay_factor;
 }
 
 void SATSolver::clause_activity_decay() {
 
     // if big value is reached, a normalization is required
-    if ( clause_activity_update > 1e100 ) {
+    if ( param.clause_activity_update > 1e100 ) {
         for ( auto & c : learned )
-            c->renormalize_activity(clause_activity_update);
-        clause_activity_update = 1.0;
+            c->renormalize_activity(param.clause_activity_update);
+        param.clause_activity_update = 1.0;
     }
 
-    clause_activity_update*=clause_decay_factor;
+    param.clause_activity_update*=param.clause_decay_factor;
 }
 
 void SATSolver::reduce_learned() {
     size_t i = 0, j = 0; // use this indices to compact the vector
     // Remove any clause below this activity
-    double  extra_lim = clause_activity_update / learned.size();
+    double  extra_lim = param.clause_activity_update / learned.size();
 
     // sort learned clause by activity (in ascending order)
     sort(learned.begin(), learned.end(),
@@ -643,42 +631,42 @@ void SATSolver::set_log( int l) {
 }
 
 void SATSolver::set_restarting_multiplier(unsigned int b) {
-    restart_interval_multiplier = b;
+    param.restart_interval_multiplier = b;
 }
 
 void SATSolver::set_preprocessing(bool p) {
-    enable_preprocessing = p;
+    param.enable_preprocessing = p;
 }
 
 void SATSolver::set_restart(bool r) {
-    enable_restart = r;
+    param.enable_restart = r;
 }
 
 void SATSolver::set_deletion(bool d) {
-    enable_deletion = d;
+    param.enable_deletion = d;
 }
 
 void SATSolver::set_clause_decay(double decay) {
     assert_message( decay > 0.0 && decay <= 1.0, "must be 0.0 < decay ≤ 0.1 ");
-    clause_decay_factor = 1.0 / decay;
+    param.clause_decay_factor = 1.0 / decay;
 }
 
 void SATSolver::set_literal_decay(double decay) {
     assert_message( decay > 0.0 && decay <= 1.0, "must be 0.0 < decay ≤ 0.1 ");
-    literal_decay_factor = 1.0 / decay;
+    param.literal_decay_factor = 1.0 / decay;
 }
 
 void SATSolver::set_learning_multiplier( double value ) {
-    initial_learn_mult = value;
+    param.initial_learn_mult = value;
 }
 
 void SATSolver::set_learning_increase( double value ) {
-    percentual_learn_increase = value;
+    param.percentual_learn_increase = value;
 }
 
-int SATSolver::random() { 
+unsigned int SATSolver::random() { 
     // Linear Congruential Generator
-    seed = ( 1103515245 * seed + 12345 ) % 2147483648;
+    seed = ( 2477 * seed + 6803 ) % 2147483648;
     return seed;
 }
 } // end namespace Satyricon
