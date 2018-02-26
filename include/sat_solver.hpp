@@ -1,7 +1,6 @@
 #ifndef SATYRICON_SOLVER_HPP
 #define SATYRICON_SOLVER_HPP
 
-#include <queue>
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -184,11 +183,10 @@ private:
     std::vector<int> decision_levels;
     std::vector<ClausePtr > antecedents;
 
-    // after an assignment is performed, both for decision or unit propagation,
-    // the effect of the assignment on the other clause must be propagated
-    std::queue<Literal> propagation_queue;
+    // keep track of the variable to propagate in the trail
+    std::vector<Literal>::size_type propagation_starting_pos;
 
-    // trial of assignment
+    // trail of assignment
     std::vector<Literal> trail;
     std::vector<int>  trail_limit;
 

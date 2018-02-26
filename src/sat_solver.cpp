@@ -1,5 +1,4 @@
 #include <array>
-#include <queue>
 #include <algorithm>
 #include <tuple>
 #include <iomanip>
@@ -7,7 +6,7 @@
 #include "sat_solver.hpp"
 
 using std::endl; using std::setw; using std::max;
-using std::vector; using std::string; using std::queue; using std::set;
+using std::vector; using std::string; using std::set;
 
 namespace Satyricon {
 
@@ -37,7 +36,7 @@ SATSolver::SATSolver():
     values(),
     decision_levels(),
     antecedents(),
-    propagation_queue(),
+    propagation_starting_pos(0),
     trail(),
     trail_limit(),
     log_level(1),
@@ -177,7 +176,7 @@ Literal SATSolver::choice_lit() {
 
 void SATSolver::simplify( vector<ClausePtr> &vect) {
     assert_message(current_level() == 0,"only at top level" );
-    assert_message(propagation_queue.empty(),
+    assert_message(propagation_starting_pos == trail.size(),
             "no semplification before propagation");
     size_t j = 0;
     for ( auto & c : vect ) {
@@ -225,6 +224,7 @@ void SATSolver::cancel_until( int level ) {
             " to " << level << endl);
     while ( current_level() > level )
         cancel();
+    propagation_starting_pos = trail.size();
 }
 
 void SATSolver::print_status(unsigned int conflict, unsigned int restart,
@@ -303,9 +303,6 @@ bool SATSolver::assign(Literal l, ClausePtr antecedent) {
     // save the current decision, for eventual backtrack
     trail.push_back(l);
 
-    // the assignment effect must propagate
-    propagation_queue.push(l);
-
     return false; // no conflict found
 }
 
@@ -314,14 +311,14 @@ size_t SATSolver::number_of_assigned_variable() const {
 }
 
 SATSolver::ClausePtr SATSolver::propagation() {
-    while ( ! propagation_queue.empty() ) {
-        // fetch an element from the queue
-        auto l = propagation_queue.front(); propagation_queue.pop();
-        PRINT_VERBOSE("propagate " << l << endl);
+
+    while ( propagation_starting_pos < trail.size() ) {
+
+        PRINT_VERBOSE("propagate " << trail[propagation_starting_pos] << endl);
 
         // extract the list of the opposite literal 
         // (they are false now, their watcher must be moved)
-        auto failed = !l;
+        auto failed = !trail[propagation_starting_pos++];
         propagation_to_move.clear();
         swap(propagation_to_move,watch_list[failed.index()]);
 
@@ -371,8 +368,6 @@ SATSolver::ClausePtr SATSolver::propagation() {
             copy(++it, propagation_to_move.end(),
                     back_inserter(watch_list[failed.index()]));
 
-            // clear the propagation
-            queue<Literal>().swap(propagation_queue);
             return conflict_clause;
         }
     }
