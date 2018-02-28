@@ -47,7 +47,10 @@ SATSolver::SATSolver():
     analisys_reason(),
     literals_activity(),
     order(literals_activity,values),
-    seed(123456),
+    seed_1(123456789),
+    seed_2(362436000),
+    seed_3(521288629),
+    seed_4(7654321),
     param()
 {}
 
@@ -666,10 +669,34 @@ void SATSolver::set_learning_increase( double value ) {
     param.percentual_learn_increase = value;
 }
 
-unsigned int SATSolver::random() { 
+unsigned int SATSolver::random_lcg() { 
     // Linear Congruential Generator
-    seed = ( 2477 * seed + 6803 ) % 2147483648;
-    return seed;
+    seed_1 = ( 2477 * seed_1 + 6803 ) % 2147483648;
+    return seed_1;
 }
+
+/* Seed variables */
+
+
+inline unsigned int SATSolver::random() {
+    return random_kiss();
+}
+
+unsigned int SATSolver::random_kiss() { 
+    // the KISS random number generator
+
+    seed_1 = 69069*seed_1+12345; 
+
+    seed_2 ^= (seed_2<<13);
+    seed_2 ^= (seed_2>>17);
+    seed_2 ^= (seed_2<<5);
+
+    uint64_t t = 698769069ULL*seed_3+seed_4;
+
+    seed_4 = (t>>32);
+
+    return seed_1+seed_2+(seed_3=seed_4); 
+}
+
 } // end namespace Satyricon
 

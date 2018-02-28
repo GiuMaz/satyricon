@@ -206,7 +206,9 @@ private:
     size_t number_of_assigned_variable() const;
 
     // generate a random number in 0..2^31, it modify the seed
-    unsigned int random();
+    inline unsigned int random();
+    unsigned int random_kiss();
+    unsigned int random_lcg();
 
     // log file
     int log_level;
@@ -226,7 +228,7 @@ private:
     std::vector<double> literals_activity;
     Literal_Order order;
     
-    unsigned int seed;
+    uint32_t seed_1, seed_2, seed_3, seed_4;
 
     SearchParameter param;
 };
