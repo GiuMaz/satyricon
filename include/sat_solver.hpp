@@ -17,6 +17,7 @@ struct SearchParameter {
         enable_preprocessing(true),
         enable_restart(true),
         enable_deletion(true),
+        enable_random_choice(true),
         restart_interval_multiplier(100),
         restart_threshold(1),
         literal_decay_factor(1.0 / 0.95),
@@ -31,6 +32,7 @@ struct SearchParameter {
     bool enable_preprocessing;
     bool enable_restart;
     bool enable_deletion;
+    bool enable_random_choice;
 
     // restartin policy
     unsigned int restart_interval_multiplier;
@@ -98,6 +100,10 @@ public:
 
     // enable or disable deletion stratergy of learned clause
     void set_deletion(bool p);
+
+    // enable random selection of literal in 1% of the cases, can be usefull
+    // to escape from local minimum in VSIDS
+    void set_random_choice( bool r );
 
     // multiply the lenght of each restart sequence
     void set_restarting_multiplier(unsigned int b);

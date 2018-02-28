@@ -162,7 +162,7 @@ bool SATSolver::solve() {
 Literal SATSolver::choice_lit() {
 
     // random choice 1% of times
-    if ( random() % 100 == 0 ) { // TODO: probably need more test/tuning
+    if ( param.enable_random_choice &&  random() % 100 == 0 ) {
         int val;
         do {
             val = random() % number_of_variable;
@@ -638,6 +638,10 @@ void SATSolver::set_preprocessing(bool p) {
 
 void SATSolver::set_restart(bool r) {
     param.enable_restart = r;
+}
+
+void SATSolver::set_random_choice( bool r ) {
+    param.enable_random_choice = r;
 }
 
 void SATSolver::set_deletion(bool d) {

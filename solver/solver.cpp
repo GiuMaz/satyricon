@@ -93,6 +93,9 @@ int main(int argc, char* argv[])
             "disable search restart",{"no-restart"});
     auto& no_deletion = parser.make_flag("no_deletion",
             "disable deletion of learned clauses",{"no-deletion"});
+    auto& no_random_choice = parser.make_flag("no_random_choice",
+            "disable random selection of literal in 1\% of the cases",
+            {"no-random"});
 
     // decay policy
     float decay_literal_factor = 0.95, decay_clauses_factor = 0.999;
@@ -231,6 +234,7 @@ int main(int argc, char* argv[])
     if ( no_preproc  ) solver.set_preprocessing(false);
     if ( no_restart  ) solver.set_restart(false);
     if ( no_deletion ) solver.set_deletion(false);
+    if ( no_random_choice ) solver.set_random_choice(false);
     
     // decaying factor
     solver.set_clause_decay(decay_clauses_factor);
