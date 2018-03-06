@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 #include "dimacs_parser.hpp"
-#include "solver_types.hpp"
 #include "sat_solver.hpp"
+#include "solver_types.hpp"
 
 //using namespace std;
 //using namespace Satyricon;

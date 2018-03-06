@@ -256,7 +256,7 @@ unsigned int SATSolver::next_restart_interval( unsigned int pos) {
 }
 
 unsigned int SATSolver::new_restart_threshold() {
-    return param.restart_interval_multiplier * next_restart_interval(luby_next++);
+    return param.restart_interval_multiplier*next_restart_interval(luby_next++);
 }
 
 void SATSolver::build_sat_proof() {
@@ -377,7 +377,8 @@ SATSolver::ClausePtr SATSolver::propagation() {
     return nullptr; // no conflict
 }
 
-void SATSolver::conflict_analysis(ClausePtr conflict, vector<Literal> &out_learnt, int &out_btlevel) {
+void SATSolver::conflict_analysis(ClausePtr conflict,
+        vector<Literal> &out_learnt, int &out_btlevel) {
     assert_message(out_learnt.empty(), "out_learnt must be empty");
     std::fill(analisys_seen.begin(), analisys_seen.end(),false);
     int counter = 0;
