@@ -242,17 +242,21 @@ void SATSolver::print_status(unsigned int conflict, unsigned int restart,
 
 unsigned int SATSolver::next_restart_interval( unsigned int pos) {
     // use the luby sequence for evaluating the new interval
-    // the code is based on minisat luby sequence
+    // the code is based on minisat
     unsigned int size, seq;
-    for ( size = 1, seq = 0; size < pos+1; ++seq, size = 2*size + 1 );
 
+    // find in what sequence we are, the sequence i have lenght (2^i)-1
+    for ( size = 1, seq = 0; size < pos+1; ++seq, size = 2*size + 1 )
+        ;
+
+    // find the value inside the sequence
     while ( (size-1) != pos ) {
         size /= 2;
         --seq;
         pos %= size;
     }
 
-    return 1 << seq;
+    return 1 << seq; // 2^seq
 }
 
 unsigned int SATSolver::new_restart_threshold() {
