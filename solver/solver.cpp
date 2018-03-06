@@ -96,6 +96,9 @@ int main(int argc, char* argv[])
     auto& no_random_choice = parser.make_flag("no_random_choice",
             "disable random selection of literal in 1\% of the cases",
             {"no-random"});
+    auto& no_cc_reduction = parser.make_flag("no_cc_reduction",
+            "disable reduction of the conflict clause",
+            {"no-cc-reduction"});
 
     // decay policy
     float decay_literal_factor = 0.95, decay_clauses_factor = 0.999;
@@ -235,6 +238,7 @@ int main(int argc, char* argv[])
     if ( no_restart  ) solver.set_restart(false);
     if ( no_deletion ) solver.set_deletion(false);
     if ( no_random_choice ) solver.set_random_choice(false);
+    if ( no_cc_reduction ) solver.set_conflict_clause_reduction(false);
     
     // decaying factor
     solver.set_clause_decay(decay_clauses_factor);

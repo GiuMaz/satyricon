@@ -426,6 +426,30 @@ void SATSolver::conflict_analysis(ClausePtr conflict,
         --counter;
     } while ( counter > 0 );
     out_learnt[0] = !p;
+
+    if (param.enable_conflict_semplification) {
+        // try to simplify the conflict clause to learn, with a self subsumption
+        // from the reasons of all the literals
+        unsigned int i, j;
+        for (i = j = 1; i < out_learnt.size(); i++){
+
+            ClausePtr c = antecedents[out_learnt[i].var()];
+
+            if ( c == nullptr ) {
+                out_learnt[j++] = out_learnt[i];
+                continue;
+            }
+
+            for (unsigned int k = 1; k < c->size(); k++) {
+                if (!analisys_seen[c->at(k).var()] &&
+                        decision_levels[c->at(k).var()] != 0){
+                    out_learnt[j++] = out_learnt[i];
+                    break;
+                }
+            }
+        }
+        out_learnt.resize(j);
+    }
 }
 
 void SATSolver::undo_one() {
@@ -640,6 +664,10 @@ void SATSolver::set_restarting_multiplier(unsigned int b) {
     param.restart_interval_multiplier = b;
 }
 
+void SATSolver::set_conflict_clause_reduction( bool r ) {
+    param.enable_conflict_semplification = r;
+}
+
 void SATSolver::set_preprocessing(bool p) {
     param.enable_preprocessing = p;
 }
@@ -674,17 +702,14 @@ void SATSolver::set_learning_increase( double value ) {
     param.percentual_learn_increase = value;
 }
 
+inline unsigned int SATSolver::random() {
+    return random_kiss();
+}
+
 unsigned int SATSolver::random_lcg() { 
     // Linear Congruential Generator
     seed_1 = ( 2477 * seed_1 + 6803 ) % 2147483648;
     return seed_1;
-}
-
-/* Seed variables */
-
-
-inline unsigned int SATSolver::random() {
-    return random_kiss();
 }
 
 unsigned int SATSolver::random_kiss() { 
