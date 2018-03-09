@@ -56,11 +56,6 @@ struct SearchParameter {
  * This class is used to solve a SAT problem instance.
  */
 class SATSolver {
-
-    // handfull type declaration
-    using ClausePtr = Clause*;
-    using WatchMap = std::vector<std::vector<ClausePtr> >;
-
 public:
 
     SATSolver();
@@ -122,6 +117,23 @@ public:
     void set_learning_increase( double value );
 
 private:
+
+    using ClausePtr = Clause*;
+
+    class Watcher {
+    public:
+        explicit Watcher(ClausePtr c) : clause(c){}
+        explicit Watcher(Literal l) : bits((l.index()<<1)+1){}
+
+        bool is_literal() { return bits & 1; }
+        Literal   get_literal() { return Literal::from_index( bits>>1 ); }
+        ClausePtr get_clause()  { return clause; }
+    private:
+        union {ClausePtr clause; uint64_t bits;};
+    };
+
+    using WatchMap = std::vector<std::vector<Watcher> >;
+
     // forward declaration of support class Clause
 
     // print the search status
@@ -138,6 +150,7 @@ private:
     bool new_clause(std::vector<Literal> & lits, bool learnt, ClausePtr &c_ref);
 
     void remove_from_vect( std::vector<ClausePtr> &v, ClausePtr c );
+    void remove_from_vect( std::vector<Watcher> &v, ClausePtr c );
 
     void remove_clause( ClausePtr c );
 
@@ -226,7 +239,7 @@ private:
 
     // support data structure
     std::vector<Literal> solve_conflict_literals;
-    std::vector<ClausePtr> propagation_to_move;
+    std::vector<Watcher> propagation_to_move;
     std::vector<bool> analisys_seen;
     std::vector<Literal> analisys_reason;
 

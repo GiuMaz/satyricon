@@ -35,6 +35,7 @@ public:
     Literal(int v, bool is_signed) :
         value( v + v + (int)is_signed ) {}
     Literal(): Literal(-1,false) {}
+    static Literal from_index( int i ) { Literal l; l.value = i; return l;}
 
     Literal(const Literal& other) = default;
 
@@ -92,7 +93,6 @@ using Iterator = Literal *;
 using ConstIterator = const Literal *;
 
 private:
-    // the learned clause need activity, the original need lit_hash
     bool learned  :  1;
     uint64_t _size : 31;
 

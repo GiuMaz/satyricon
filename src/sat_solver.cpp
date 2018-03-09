@@ -131,8 +131,8 @@ bool SATSolver::solve() {
             }
 
             if ( current_level() == 0 ) {
-                simplify(clauses);
-                simplify(learned);
+                //simplify(clauses);
+                //simplify(learned);
             }
 
             // if the learning limit is reached, the learned clause must
@@ -331,10 +331,11 @@ SATSolver::ClausePtr SATSolver::propagation() {
 
         for (auto it = propagation_to_move.begin();
                 it != propagation_to_move.end(); ++it) {
+
             // propagate effect on a clause
-            assert_message((*it)->at(0)==failed || (*it)->at(1)==failed,
-                    "moving a non watched");
-            Clause &c = **it; // usefull reference
+            Clause &c = *(it->get_clause()); // usefull reference
+            assert_message(c[0]==failed || c[1]==failed,"moving a non watched");
+
             // make sure the false literal is in position 1
             if ( c[0] == failed ) { c[0] = c[1]; c[1] = failed; }
 
@@ -364,12 +365,12 @@ SATSolver::ClausePtr SATSolver::propagation() {
             watch_list[failed.index()].push_back(*it);
 
             // the clause must be a conflict or a unit, try to assign the value
-            bool conflict = assign(c[0],*it);
+            bool conflict = assign(c[0],it->get_clause());
             if ( ! conflict ) continue; // no problem, move to the next
 
             // conflict found in propagation 
-            PRINT_VERBOSE("\tfound a conflict on " << (*it)->print() << endl);
-            ClausePtr conflict_clause = *it;
+            PRINT_VERBOSE("\tfound a conflict on " << (it->get_clause())->print() << endl);
+            ClausePtr conflict_clause = it->get_clause();
 
             // reset the other literal to move (it is already set by propagate)
             copy(++it, propagation_to_move.end(),
@@ -517,8 +518,8 @@ bool SATSolver::new_clause(vector<Literal> &c, bool learnt, ClausePtr &c_ref) {
     }
 
     //  add to the watch list
-    watch_list[c_ref->at(0).index()].push_back(c_ref);
-    watch_list[c_ref->at(1).index()].push_back(c_ref);
+    watch_list[c_ref->at(0).index()].push_back(Watcher(c_ref));
+    watch_list[c_ref->at(1).index()].push_back(Watcher(c_ref));
 
     return false; // no conflict
 }
@@ -556,7 +557,6 @@ void SATSolver::learn_clause(std::vector<Literal> & lits) {
             order.increase_activity(l);
         }
     }
-
 }
 
 // Nothing for now
@@ -565,6 +565,17 @@ void SATSolver::preprocessing() {}
 void SATSolver::remove_from_vect( std::vector<ClausePtr> &v, ClausePtr c ) {
     for ( auto &i : v ) {
         if ( i == c ) {
+            i = v.back();
+            v.pop_back();
+            return;
+        }
+    }
+    assert_message(false,"removing a nonexistent object object "+c->print());
+}
+
+void SATSolver::remove_from_vect( std::vector<Watcher> &v, ClausePtr c ) {
+    for ( auto &i : v ) {
+        if ( i.get_clause() == c ) {
             i = v.back();
             v.pop_back();
             return;
