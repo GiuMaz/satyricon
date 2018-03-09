@@ -120,8 +120,13 @@ private:
 
     using ClausePtr = Clause*;
 
-    class Watcher {
-    public:
+    // strutcture for handle clauses in watch list, it can handle 2 literal
+    // clauses in a special way, directly embedding the other literal instead
+    // of a pointer to another clause (with a useless overhead)
+    struct Watcher {
+        // this struct is a tagged pointer, the real pointer alwas has 2 or 3
+        // zero as the LSB, so I use the first bit to identify if the clause
+        // is simply a literal
         explicit Watcher(ClausePtr c) : clause(c){}
         explicit Watcher(Literal l) : bits((l.index()<<1)+1){}
 
