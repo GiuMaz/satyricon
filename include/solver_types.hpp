@@ -1,6 +1,7 @@
 #ifndef SATYRICON_SOLVER_TYPES_HPP
 #define SATYRICON_SOLVER_TYPES_HPP
 
+#include <assert.h>
 #include <iostream>
 #include <memory>
 #include <new>
@@ -9,7 +10,6 @@
 #include <sstream>
 #include <string>
 #include <stdlib.h>
-#include "assert_message.hpp"
 
 namespace Satyricon {
 
@@ -110,12 +110,12 @@ public:
         auto size = sizeof(Clause) + sizeof(Literal)*lits.size();
         if ( learnt ) size += sizeof(double);
         void* memory =  malloc(size);
-        assert_message( memory != nullptr, "out of memory");
+        assert( memory != nullptr);
         return new (memory) Clause(learnt,lits);
     }
 
     static void deallocate(Clause* &c) {
-        assert_message( c != nullptr, "freeing a null pointer");
+        assert( c != nullptr);
         c->~Clause();
         free((void*)c);
         c = nullptr;
@@ -124,7 +124,7 @@ public:
     uint64_t size() const { return _size; }
     bool is_learned() const { return learned; }
     double &get_activity() {
-        assert_message(is_learned(),"only learned clausole has activity");
+        assert(is_learned());
         return *reinterpret_cast<double*>(end());
     }
 
@@ -161,7 +161,7 @@ public:
 
     // this metod can be used to reduce the size of the literal
     void shrink( size_t new_size) {
-        assert_message( new_size <= _size, "cannot increase size");
+        assert( new_size <= _size);
         if ( new_size == _size ) return;
         _size = new_size;
     }
@@ -177,7 +177,7 @@ public:
         activity(v), value(), map_position()  {}
 
     Literal pop_max() {
-        assert_message(!value.empty(), "pop from an empty heap");
+        assert(!value.empty());
 
         auto max = value.front();
         value.front() = value.back();
@@ -220,7 +220,7 @@ public:
             map_position[l.index()] = value.size()-1;
 
         }
-        assert_message( value.size() == map_position.size(), "");
+        assert( value.size() == map_position.size());
 
         for ( int i = value.size()/2; i >= 0; --i )
             heapify(i);

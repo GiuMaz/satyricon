@@ -11,12 +11,12 @@
  * Option are like flag but they have one argument. (eg: -o <output_file>)
  * multiple argument are not supporteted.
  */
+#include <assert.h>
 #include <map>
 #include <string>
 #include <sstream>
 #include <vector>
 #include <set>
-#include "assert_message.hpp"
 
 namespace Utils {
 
@@ -25,7 +25,7 @@ using ParsingException = std::runtime_error;
 
 // utility function for text wrapping
 inline std::string wrap_string(const std::string &s,size_t begin, size_t end) {
-    assert_message(end > begin,"impossible to wrap text of negative size");
+    assert(end > begin);
 
     std::istringstream iss(s);
     std::string wrapped, line;
@@ -247,8 +247,7 @@ private:
 template<typename T>
 ArgPositional<T>&  ArgumentParser::make_positional( const std::string& name,
         const std::string& description) {
-    assert_message(used_name.find(name) == used_name.end(),
-            "name '" + name+"' already in use");
+    assert(used_name.find(name) == used_name.end());
     used_name.insert(name);
 
     auto p = new ArgPositional<T>(name,description,positionals.size());
@@ -259,16 +258,14 @@ ArgPositional<T>&  ArgumentParser::make_positional( const std::string& name,
 template<typename T>
 ArgOption<T>& ArgumentParser::make_option( const std::string& name,
         const std::string& description, const std::vector<std::string>& opts) {
-    assert_message(used_name.find(name) == used_name.end(),
-            "name '" + name+"' already in use");
+    assert(used_name.find(name) == used_name.end());
     used_name.insert(name);
 
     auto o = new ArgOption<T>(name,description,opts);
     options.push_back(o);
 
     for ( auto i : opts ) {
-        assert_message(used_identifier.find(i) == used_identifier.end(),
-                "identifier '"+i+"' in '"+name+"' already used.");
+        assert(used_identifier.find(i) == used_identifier.end());
         used_identifier.insert(i);
 
         option_mapping.insert( make_pair (i, o));
@@ -288,16 +285,14 @@ inline ArgumentParser::~ArgumentParser() {
 
 inline ArgFlag& ArgumentParser::make_flag( const std::string& name,
         const std::string& description, const std::vector<std::string>& flg) {
-    assert_message(used_name.find(name) == used_name.end(),
-            "name '" + name+"' already in use");
+    assert(used_name.find(name) == used_name.end());
     used_name.insert(name);
 
     auto f = new ArgFlag(name,description,flg);
     flags.push_back(f);
 
     for ( auto i : flg ) {
-        assert_message(used_identifier.find(i) == used_identifier.end(),
-                "identifier '"+i+"' in '"+name+"' already used.");
+        assert(used_identifier.find(i) == used_identifier.end());
         used_identifier.insert(i);
 
         flag_mapping.insert( std::make_pair(i, f));

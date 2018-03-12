@@ -1,8 +1,8 @@
 #include <array>
+#include <assert.h>
 #include <algorithm>
 #include <tuple>
 #include <iomanip>
-#include "assert_message.hpp"
 #include "sat_solver.hpp"
 
 using std::endl; using std::setw; using std::max;
@@ -178,9 +178,8 @@ Literal SATSolver::choice_lit() {
 }
 
 void SATSolver::simplify( vector<ClausePtr> &vect) {
-    assert_message(current_level() == 0,"only at top level" );
-    assert_message(propagation_starting_pos == trail.size(),
-            "no semplification before propagation");
+    assert(current_level() == 0);
+    assert(propagation_starting_pos == trail.size());
     size_t j = 0;
     for ( auto & c : vect ) {
         if ( simplify_clause(c) )
@@ -205,8 +204,7 @@ bool SATSolver::simplify_clause( ClausePtr c ) {
 }
 
 bool SATSolver::assume( Literal p ) {
-    assert_message( get_asigned_value(p) == LIT_UNASIGNED,
-            "deciding an already assigned literal");
+    assert( get_asigned_value(p) == LIT_UNASIGNED);
     trail_limit.push_back(static_cast<int>(trail.size()));
     return assign(p, nullptr);
 }
@@ -253,7 +251,7 @@ unsigned int SATSolver::next_restart_interval( unsigned int pos) {
     while ( (size-1) != pos ) {
         size /= 2;
         --seq;
-        pos %= size;
+        pos %= size; // NOLINT(clang-analyzer-core.DivideZero)
     }
 
     return 1 << seq; // 2^seq
@@ -334,7 +332,7 @@ SATSolver::ClausePtr SATSolver::propagation() {
 
             // propagate effect on a clause
             Clause &c = *(it->get_clause()); // usefull reference
-            assert_message(c[0]==failed || c[1]==failed,"moving a non watched");
+            assert(c[0]==failed || c[1]==failed);
 
             // make sure the false literal is in position 1
             if ( c[0] == failed ) { c[0] = c[1]; c[1] = failed; }
@@ -384,7 +382,7 @@ SATSolver::ClausePtr SATSolver::propagation() {
 
 void SATSolver::conflict_analysis(ClausePtr conflict,
         vector<Literal> &out_learnt, int &out_btlevel) {
-    assert_message(out_learnt.empty(), "out_learnt must be empty");
+    assert(out_learnt.empty());
     std::fill(analisys_seen.begin(), analisys_seen.end(),false);
     int counter = 0;
     Literal p = UNDEF_LIT;
@@ -570,7 +568,7 @@ void SATSolver::remove_from_vect( vector<ClausePtr> &v, ClausePtr c ) {
             return;
         }
     }
-    assert_message(false,"removing a nonexistent object object "+c->print());
+    assert(false);
 }
 
 void SATSolver::remove_from_vect( vector<Watcher> &v, ClausePtr c ) {
@@ -581,7 +579,7 @@ void SATSolver::remove_from_vect( vector<Watcher> &v, ClausePtr c ) {
             return;
         }
     }
-    assert_message(false,"removing a nonexistent object object "+c->print());
+    assert(false);
 }
 
 void SATSolver::remove_clause( ClausePtr c ) {
@@ -697,12 +695,12 @@ void SATSolver::set_deletion(bool d) {
 }
 
 void SATSolver::set_clause_decay(double decay) {
-    assert_message( decay > 0.0 && decay <= 1.0, "must be 0.0 < decay ≤ 0.1 ");
+    assert( decay > 0.0 && decay <= 1.0);
     param.clause_decay_factor = 1.0 / decay;
 }
 
 void SATSolver::set_literal_decay(double decay) {
-    assert_message( decay > 0.0 && decay <= 1.0, "must be 0.0 < decay ≤ 0.1 ");
+    assert( decay > 0.0 && decay <= 1.0);
     param.literal_decay_factor = 1.0 / decay;
 }
 
