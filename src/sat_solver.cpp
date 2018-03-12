@@ -524,7 +524,7 @@ bool SATSolver::new_clause(vector<Literal> &c, bool learnt, ClausePtr &c_ref) {
     return false; // no conflict
 }
 
-bool SATSolver::add_clause(std::vector<Literal>& lits) {
+bool SATSolver::add_clause(vector<Literal>& lits) {
     // build the new clause
     ClausePtr clause;
     bool conflict = new_clause(lits, false, clause);
@@ -540,14 +540,14 @@ bool SATSolver::add_clause(std::vector<Literal>& lits) {
     return false; // no conflict
 }
 
-void SATSolver::learn_clause(std::vector<Literal> & lits) {
+void SATSolver::learn_clause(vector<Literal> & lits) {
     PRINT_VERBOSE("learn clause " << lits << endl);
     // build the new clause, it's never a conflict if the clause is learned
     ClausePtr clause;
     new_clause(lits, true, clause);
     // the learned clause is always a unit, with the unasigned literal in 0
     assign(lits[0],clause);
-    PRINT_VERBOSE("address " << clause << std::endl);
+    PRINT_VERBOSE("address " << clause << endl);
     // if the clause have only one literal, don't add that to the list
     if ( clause != nullptr ) {
         learned.push_back(clause);
@@ -562,7 +562,7 @@ void SATSolver::learn_clause(std::vector<Literal> & lits) {
 // Nothing for now
 void SATSolver::preprocessing() {}
 
-void SATSolver::remove_from_vect( std::vector<ClausePtr> &v, ClausePtr c ) {
+void SATSolver::remove_from_vect( vector<ClausePtr> &v, ClausePtr c ) {
     for ( auto &i : v ) {
         if ( i == c ) {
             i = v.back();
@@ -573,7 +573,7 @@ void SATSolver::remove_from_vect( std::vector<ClausePtr> &v, ClausePtr c ) {
     assert_message(false,"removing a nonexistent object object "+c->print());
 }
 
-void SATSolver::remove_from_vect( std::vector<Watcher> &v, ClausePtr c ) {
+void SATSolver::remove_from_vect( vector<Watcher> &v, ClausePtr c ) {
     for ( auto &i : v ) {
         if ( i.get_clause() == c ) {
             i = v.back();
@@ -653,6 +653,7 @@ void SATSolver::reduce_learned() {
 void SATSolver::set_number_of_variable(unsigned int n) {
     // right now, it is possible to set the number of variable only one time
     if ( number_of_variable != 0 )
+        // TODO: write a proper interface
         throw std::runtime_error("multiple resize not supported yet");
 
     number_of_variable = n;

@@ -8,6 +8,7 @@
 #include "ArgumentParser.hpp"
 #include "dimacs_parser.hpp"
 #include "sat_solver.hpp"
+#include <stdlib.h>
 
 using std::exception;
 using std::cout; using std::endl; using std::cin;
@@ -41,17 +42,19 @@ std::string program_description =
 "the clauses." ;
 
 std::chrono::time_point<std::chrono::steady_clock> start; // NOLINT(cert-err58-cpp)
+Satyricon::SATSolver solver;  // NOLINT(cert-err58-cpp)
 
 void signalHandler( int signum ) {
-   cout << "Interrupt signal (" << signum << ") received.\n";
+    //TODO: print solver status
+    cout << "Interrupt signal (" << signum << ") received.\n";
 
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = end_time - start;
     cout << "stopped after: " << std::fixed << std::setprecision(2) <<
         elapsed.count() << "s\n";
 
-   cout << "UNKNOWN\n";
-   exit(1);  
+    cout << "UNKNOWN\n";
+    std::_Exit(1); // quick exit
 }
 
 /**
@@ -205,7 +208,6 @@ int main(int argc, char* argv[])
 
     // SOLVER
 
-    Satyricon::SATSolver solver;
     solver.set_log(verbose ? 2 : 1);
 
     start = std::chrono::steady_clock::now();

@@ -139,8 +139,6 @@ private:
 
     using WatchMap = std::vector<std::vector<Watcher> >;
 
-    // forward declaration of support class Clause
-
     // print the search status
     void print_status(unsigned int conflict, unsigned int restart,
             unsigned int learn_limit);
